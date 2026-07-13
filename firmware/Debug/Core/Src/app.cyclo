@@ -1,0 +1,6 @@
+../Core/Src/app.c:33:6:deinterleave_and_convert	2
+../Core/Src/app.c:48:19:app_init	1
+../Core/Src/app.c:63:6:app_loop	3
+../Core/Src/app.c:115:6:HAL_I2S_RxHalfCpltCallback	2
+../Core/Src/app.c:123:6:HAL_I2S_RxCpltCallback	2
+../Core/Src/app.c:133:5:__io_putchar	1

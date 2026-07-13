@@ -1,0 +1,38 @@
+################################################################################
+# Automatically-generated file. Do not edit!
+# Toolchain: GNU Tools for STM32 (14.3.rel1)
+################################################################################
+
+# Add inputs and outputs from these tool invocations to the build variables 
+C_SRCS += \
+../Drivers/CMSIS/DSP/Testing/cmsis_build/RTE/Device/ARMCM23/startup_ARMCM23.c \
+../Drivers/CMSIS/DSP/Testing/cmsis_build/RTE/Device/ARMCM23/system_ARMCM23.c 
+
+S_UPPER_SRCS += \
+../Drivers/CMSIS/DSP/Testing/cmsis_build/RTE/Device/ARMCM23/startup_ARMCM23.S 
+
+OBJS += \
+./Drivers/CMSIS/DSP/Testing/cmsis_build/RTE/Device/ARMCM23/startup_ARMCM23.o \
+./Drivers/CMSIS/DSP/Testing/cmsis_build/RTE/Device/ARMCM23/system_ARMCM23.o 
+
+S_UPPER_DEPS += \
+./Drivers/CMSIS/DSP/Testing/cmsis_build/RTE/Device/ARMCM23/startup_ARMCM23.d 
+
+C_DEPS += \
+./Drivers/CMSIS/DSP/Testing/cmsis_build/RTE/Device/ARMCM23/startup_ARMCM23.d \
+./Drivers/CMSIS/DSP/Testing/cmsis_build/RTE/Device/ARMCM23/system_ARMCM23.d 
+
+
+# Each subdirectory must supply rules for building sources it contributes
+Drivers/CMSIS/DSP/Testing/cmsis_build/RTE/Device/ARMCM23/%.o: ../Drivers/CMSIS/DSP/Testing/cmsis_build/RTE/Device/ARMCM23/%.S Drivers/CMSIS/DSP/Testing/cmsis_build/RTE/Device/ARMCM23/subdir.mk
+	arm-none-eabi-gcc -mcpu=cortex-m7 -g3 -DDEBUG -c -x assembler-with-cpp -MMD -MP -MF"$(@:%.o=%.d)" -MT"$@" --specs=nano.specs -mfpu=fpv5-d16 -mfloat-abi=hard -mthumb -o "$@" "$<"
+Drivers/CMSIS/DSP/Testing/cmsis_build/RTE/Device/ARMCM23/%.o Drivers/CMSIS/DSP/Testing/cmsis_build/RTE/Device/ARMCM23/%.su Drivers/CMSIS/DSP/Testing/cmsis_build/RTE/Device/ARMCM23/%.cyclo: ../Drivers/CMSIS/DSP/Testing/cmsis_build/RTE/Device/ARMCM23/%.c Drivers/CMSIS/DSP/Testing/cmsis_build/RTE/Device/ARMCM23/subdir.mk
+	arm-none-eabi-gcc "$<" -mcpu=cortex-m7 -std=gnu11 -g3 -DDEBUG -DARM_MATH_CM7 -D__FPU_PRESENT=1 -DUSE_HAL_DRIVER -DSTM32H723xx -DSTM32_THREAD_SAFE_STRATEGY=2 -DUSE_PWR_LDO_SUPPLY -c -I../Core/Inc -I../Drivers/CMSIS/DSP/Include -I../Drivers/CMSIS/DSP/PrivateInclude -I../Drivers/STM32H7xx_HAL_Driver/Inc -I../Drivers/STM32H7xx_HAL_Driver/Inc/Legacy -I../Drivers/CMSIS/Device/ST/STM32H7xx/Include -I../Drivers/CMSIS/Include -I../Core/ThreadSafe -O0 -ffunction-sections -fdata-sections -Wall -fstack-usage -fcyclomatic-complexity -MMD -MP -MF"$(@:%.o=%.d)" -MT"$@" --specs=nano.specs -mfpu=fpv5-d16 -mfloat-abi=hard -mthumb -o "$@"
+
+clean: clean-Drivers-2f-CMSIS-2f-DSP-2f-Testing-2f-cmsis_build-2f-RTE-2f-Device-2f-ARMCM23
+
+clean-Drivers-2f-CMSIS-2f-DSP-2f-Testing-2f-cmsis_build-2f-RTE-2f-Device-2f-ARMCM23:
+	-$(RM) ./Drivers/CMSIS/DSP/Testing/cmsis_build/RTE/Device/ARMCM23/startup_ARMCM23.cyclo ./Drivers/CMSIS/DSP/Testing/cmsis_build/RTE/Device/ARMCM23/startup_ARMCM23.d ./Drivers/CMSIS/DSP/Testing/cmsis_build/RTE/Device/ARMCM23/startup_ARMCM23.o ./Drivers/CMSIS/DSP/Testing/cmsis_build/RTE/Device/ARMCM23/startup_ARMCM23.su ./Drivers/CMSIS/DSP/Testing/cmsis_build/RTE/Device/ARMCM23/system_ARMCM23.cyclo ./Drivers/CMSIS/DSP/Testing/cmsis_build/RTE/Device/ARMCM23/system_ARMCM23.d ./Drivers/CMSIS/DSP/Testing/cmsis_build/RTE/Device/ARMCM23/system_ARMCM23.o ./Drivers/CMSIS/DSP/Testing/cmsis_build/RTE/Device/ARMCM23/system_ARMCM23.su
+
+.PHONY: clean-Drivers-2f-CMSIS-2f-DSP-2f-Testing-2f-cmsis_build-2f-RTE-2f-Device-2f-ARMCM23
+
