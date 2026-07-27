@@ -1,6 +1,6 @@
-../Core/Src/app.c:33:6:deinterleave_and_convert	2
-../Core/Src/app.c:48:19:app_init	1
-../Core/Src/app.c:63:6:app_loop	3
-../Core/Src/app.c:115:6:HAL_I2S_RxHalfCpltCallback	2
-../Core/Src/app.c:123:6:HAL_I2S_RxCpltCallback	2
-../Core/Src/app.c:133:5:__io_putchar	1
+../Core/Src/app.c:48:6:deinterleave_and_convert	2
+../Core/Src/app.c:63:19:app_init	5
+../Core/Src/app.c:109:6:app_loop	9
+../Core/Src/app.c:165:6:HAL_SAI_RxHalfCpltCallback	5
+../Core/Src/app.c:189:6:HAL_SAI_RxCpltCallback	5
+../Core/Src/app.c:211:5:__io_putchar	1

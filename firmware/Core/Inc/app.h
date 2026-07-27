@@ -13,12 +13,18 @@
 // Handles defined in main.c
 extern ETH_HandleTypeDef heth;
 
-extern I2S_HandleTypeDef hi2s2;
-extern I2S_HandleTypeDef hi2s3;
-extern I2S_HandleTypeDef hi2s6;
 extern DMA_HandleTypeDef hdma_spi2_rx;
 extern DMA_HandleTypeDef hdma_spi3_rx;
 extern DMA_HandleTypeDef hdma_spi6_rx;
+
+extern SAI_HandleTypeDef hsai_BlockA1;
+extern SAI_HandleTypeDef hsai_BlockB1;
+extern SAI_HandleTypeDef hsai_BlockA4;
+extern SAI_HandleTypeDef hsai_BlockB4;
+extern DMA_HandleTypeDef hdma_sai1_a;
+extern DMA_HandleTypeDef hdma_sai1_b;
+extern DMA_HandleTypeDef hdma_sai4_a;
+extern DMA_HandleTypeDef hdma_sai4_b;
 
 extern SPI_HandleTypeDef hspi4;
 
@@ -32,7 +38,7 @@ HAL_StatusTypeDef app_init(void);
 void app_loop(void);
 
 // HAL callback functions
-void HAL_I2S_RxHalfCpltCallback(I2S_HandleTypeDef *hi2s);
-void HAL_I2S_RxCpltCallback(I2S_HandleTypeDef *hi2s);
+void HAL_SAI_RxHalfCpltCallback(SAI_HandleTypeDef *hsai);
+void HAL_SAI_RxCpltCallback(SAI_HandleTypeDef *hsai);
 
 #endif /* INC_APP_H_ */

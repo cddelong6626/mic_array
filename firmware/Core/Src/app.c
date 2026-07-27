@@ -17,17 +17,32 @@
 #define SAMPLES_PER_HALF            (SAMPLES_PER_HALF_PER_CHAN * 2)
 #define BUF_LEN                     (SAMPLES_PER_HALF * 2)
 
-// Half-word rather than 24-bits per sample since mic SNR only gives 10-11 bits anyway
-int16_t i2s2_rx_buf[BUF_LEN];
-int16_t i2s3_rx_buf[BUF_LEN];
-int16_t i2s6_rx_buf[BUF_LEN];
+// 16-bits rather than 24-bits per sample since mic SNR only gives 10-11 bits anyway
+int16_t sai1a_rx_buf[BUF_LEN] __attribute__((section(".dma_buffer")));      // DMA buffer: cache disabled
+int16_t sai1b_rx_buf[BUF_LEN] __attribute__((section(".dma_buffer")));
+int16_t sai4a_rx_buf[BUF_LEN] __attribute__((section(".bdma_buffer")));     // BDMA buffer: cache disabled, D3 ram
+int16_t sai4b_rx_buf[BUF_LEN] __attribute__((section(".bdma_buffer")));
 
-float32_t audio_buf[6][SAMPLES_PER_HALF_PER_CHAN];
+// 8 channels: sai1_BlockA(0,1)  sai1_BlockB(2,3)  sai4_BlockA(4,5)  sai4_BlockB(6,7)
+float32_t audio_buf[8][SAMPLES_PER_HALF_PER_CHAN];
 
-volatile char flag_i2s2_half_filled = 0;
-volatile char flag_i2s2_full_filled = 0;
+volatile char flag_sai1a_half_filled = 0;
+volatile char flag_sai1a_full_filled = 0;
+volatile char flag_sai1b_half_filled = 0;
+volatile char flag_sai1b_full_filled = 0;
+volatile char flag_sai4a_half_filled = 0;
+volatile char flag_sai4a_full_filled = 0;
+volatile char flag_sai4b_half_filled = 0;
+volatile char flag_sai4b_full_filled = 0;
 
 int i_led;
+volatile int x = 0;
+
+volatile int x1a = 0;
+volatile int x1b = 0;
+volatile int x4a = 0;
+volatile int x4b = 0;
+
 
 
 void deinterleave_and_convert(const int16_t *rx_buf, const uint8_t i_rchannel, const uint8_t i_lchannel)
@@ -52,8 +67,11 @@ HAL_StatusTypeDef app_init(void)
     // Initialize LED array
     ret_status |= sk9822_init(&hspi4);
 
-    // Start DMA
-    HAL_I2S_Receive_DMA(&hi2s2, i2s2_rx_buf, BUF_LEN);
+    // Slave block(s) must be armed before the master starts clocking
+    ret_status |= HAL_SAI_Receive_DMA(&hsai_BlockB1, (uint8_t *)sai1b_rx_buf, BUF_LEN);
+    ret_status |= HAL_SAI_Receive_DMA(&hsai_BlockA4, (uint8_t *)sai4a_rx_buf, BUF_LEN);
+    ret_status |= HAL_SAI_Receive_DMA(&hsai_BlockB4, (uint8_t *)sai4b_rx_buf, BUF_LEN);
+    ret_status |= HAL_SAI_Receive_DMA(&hsai_BlockA1, (uint8_t *)sai1a_rx_buf, BUF_LEN);
 
     i_led = 0;
 
@@ -62,69 +80,101 @@ HAL_StatusTypeDef app_init(void)
 
 void app_loop(void)
 {
-//    HAL_StatusTypeDef ret_status;
+    HAL_StatusTypeDef ret_status;
     while (1)
     {
-        if (flag_i2s2_half_filled)
+        if (flag_sai1a_half_filled)
         {
-            deinterleave_and_convert(&i2s2_rx_buf[0], 0, 1);
-            flag_i2s2_half_filled = 0;
-
+            deinterleave_and_convert(&sai1a_rx_buf[0], 0, 1);
+            flag_sai1a_half_filled = 0;
         }
-        if (flag_i2s2_full_filled)
+        if (flag_sai1a_full_filled)
         {
-            deinterleave_and_convert(&i2s2_rx_buf[SAMPLES_PER_HALF], 0, 1);
-            flag_i2s2_full_filled = 0;
+            deinterleave_and_convert(&sai1a_rx_buf[SAMPLES_PER_HALF], 0, 1);
+            flag_sai1a_full_filled = 0;
+        }
+        if (flag_sai1b_half_filled)
+        {
+            deinterleave_and_convert(&sai1b_rx_buf[0], 2, 3);
+            flag_sai1b_half_filled = 0;
+        }
+        if (flag_sai1b_full_filled)
+        {
+            deinterleave_and_convert(&sai1b_rx_buf[SAMPLES_PER_HALF], 2, 3);
+            flag_sai1b_full_filled = 0;
+        }
+        if (flag_sai4a_half_filled)
+        {
+            deinterleave_and_convert(&sai4a_rx_buf[0], 4, 5);
+            flag_sai4a_half_filled = 0;
+        }
+        if (flag_sai4a_full_filled)
+        {
+            deinterleave_and_convert(&sai4a_rx_buf[SAMPLES_PER_HALF], 4, 5);
+            flag_sai4a_full_filled = 0;
+        }
+        if (flag_sai4b_half_filled)
+        {
+            deinterleave_and_convert(&sai4b_rx_buf[0], 6, 7);
+            flag_sai4b_half_filled = 0;
+        }
+        if (flag_sai4b_full_filled)
+        {
+            deinterleave_and_convert(&sai4b_rx_buf[SAMPLES_PER_HALF], 6, 7);
+            flag_sai4b_full_filled = 0;
         }
 
-        printf("%d\t%d\t%d\t%d\n\r", i2s2_rx_buf[0], i2s2_rx_buf[1], i2s2_rx_buf[2], i2s2_rx_buf[3]);
+        printf("s1a:%6d s1b:%6d s4a:%6d s4b:%6d | c: %6d %6d %6d %6d\n\r",
+               sai1a_rx_buf[0], sai1b_rx_buf[0], sai4a_rx_buf[0], sai4b_rx_buf[1],
+               x1a, x1b, x4a, x4b);
         HAL_Delay(100);
-
-//        if (flag)
-//        {
-//            ret_status = HAL_OK;
-//
-//            HAL_GPIO_WritePin(LED_GREEN_GPIO_Port, LED_GREEN_Pin, 1);
-//
-//            sk9822_edit_led(i_led, -1, -1, -1, 0);
-//            sk9822_edit_led((i_led + 4) % 12, -1, -1, -1, 0);
-//            sk9822_edit_led((i_led + 8) % 12, -1, -1, -1, 0);
-//
-//            ++i_led;
-//            if (i_led >= 12)
-//                i_led = 0;
-//
-//            sk9822_edit_led(i_led, 255, 0, 0, 31);
-//            sk9822_edit_led((i_led + 4) % 12, 0, 255, 0, 31);
-//            sk9822_edit_led((i_led + 8) % 12, 0, 0, 255, 31);
-//
-//            ret_status |= sk9822_send_update();
-//
-//            for (int i = 0; i < 10000000 / 4; i++)
-//            {
-//                x++;
-//            }
-//
-//        }
     }
 
 }
 
 
 // HAL callback functions
-void HAL_I2S_RxHalfCpltCallback(I2S_HandleTypeDef *hi2s)
+void HAL_SAI_RxHalfCpltCallback(SAI_HandleTypeDef *hsai)
 {
-    if (hi2s->Instance == hi2s2.Instance)
+    if (hsai->Instance == hsai_BlockA1.Instance)
     {
-        flag_i2s2_half_filled = 1;
+        flag_sai1a_half_filled = 1;
+        x1a++;
+    }
+    else if (hsai->Instance == hsai_BlockB1.Instance)
+    {
+        flag_sai1b_half_filled = 1;
+        x1b++;
+    }
+    else if (hsai->Instance == hsai_BlockA4.Instance)
+    {
+        flag_sai4a_half_filled = 1;
+        x4a++;
+    }
+    else if (hsai->Instance == hsai_BlockB4.Instance)
+    {
+        flag_sai4b_half_filled = 1;
+        x4b++;
     }
 }
 
-void HAL_I2S_RxCpltCallback(I2S_HandleTypeDef *hi2s)
+void HAL_SAI_RxCpltCallback(SAI_HandleTypeDef *hsai)
 {
-    if (hi2s->Instance == hi2s2.Instance)
+    if (hsai->Instance == hsai_BlockA1.Instance)
     {
-        flag_i2s2_full_filled = 1;
+        flag_sai1a_full_filled = 1;
+    }
+    else if (hsai->Instance == hsai_BlockB1.Instance)
+    {
+        flag_sai1b_full_filled = 1;
+    }
+    else if (hsai->Instance == hsai_BlockA4.Instance)
+    {
+        flag_sai4a_full_filled = 1;
+    }
+    else if (hsai->Instance == hsai_BlockB4.Instance)
+    {
+        flag_sai4b_full_filled = 1;
     }
 }
 
@@ -134,4 +184,3 @@ int __io_putchar(int ch) {
     HAL_UART_Transmit(&huart3, (uint8_t *)&ch, 1, HAL_MAX_DELAY);
     return ch;
 }
-

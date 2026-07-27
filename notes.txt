@@ -12,7 +12,7 @@ Connections:
 - LED strip: SPI4 (Master, SCK=PE2, MOSI=PE6)
 - MIC_D0 (U7, U8): I2S2 (Master, SDI=PC2, WS=PB12, BCK=PB10)
 - MIC_D1 (U13, U14): I2S3 (Slave, SDI=PC11, WS=PA4, BCK=PC10)
-- MIC_D2 (U19, U20): I2S1 (Slave, SDI=PA6, WS=PA0, BCK=PA5)
+- MIC_D2 (U19, U20): I2S6 (Slave, SDI=PA6, WS=PA15, BCK=PA5)
 
 >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 STM32 Nucleo board options:

@@ -47,8 +47,10 @@ MEMORY
   DTCMRAM (xrw)    : ORIGIN = 0x20000000,   LENGTH = 128K
   FLASH    (rx)    : ORIGIN = 0x08000000,   LENGTH = 1024K
   RAM_D1  (xrw)    : ORIGIN = 0x24000000,   LENGTH = 320K
-  RAM_D2  (xrw)    : ORIGIN = 0x30000000,   LENGTH = 32K
-  RAM_D3  (xrw)    : ORIGIN = 0x38000000,   LENGTH = 16K
+  RAM_D2  (xrw)    : ORIGIN = 0x30000000,   LENGTH = 28K
+  RAM_D3  (xrw)    : ORIGIN = 0x38000000,   LENGTH = 12K
+  DMA_RAM (xrw)		 : ORIGIN = 0x30007000,		LENGTH = 4K
+  BDMA_RAM (xrw)	 : ORIGIN = 0x38003000, 	LENGTH = 4K
 }
 
 /* Define output sections */
@@ -165,6 +167,27 @@ SECTIONS
     . = . + _Min_Stack_Size;
     . = ALIGN(8);
   } >RAM_D1
+  
+  
+  /* Section with cache disabled for DMA buffers */
+  .dma_buffer_section (NOLOAD) :
+  {
+  	. = ALIGN(32);
+  	*(.dma_buffer)
+  	*(.dma_buffer*)
+  	. = ALIGN(32);
+  } >DMA_RAM
+  
+  /* Need to place BDMA buffers in D3 ram */
+  .bdma_buffer_section (NOLOAD) :
+  {
+  	. = ALIGN(32);
+  	*(.bdma_buffer)
+  	*(.bdma_buffer*)
+  	. = ALIGN(32);
+  } >BDMA_RAM
+  
+  
 
   /* Remove information from the standard libraries */
   /DISCARD/ :
