@@ -18,6 +18,8 @@
 #define SAMPLES_PER_HALF            (SAMPLES_PER_HALF_PER_CHAN * 2)
 #define BUF_LEN                     (SAMPLES_PER_HALF * 2)
 #define FFT_LEN                     SAMPLES_PER_HALF_PER_CHAN
+#define N_CHAN_PAIRS                N_CHANS*(N_CHANS-1)/2
+#define N_CMPX_SAMPLES              (FFT_LEN)/2 - 1
 
 // 16-bits rather than 24-bits per sample since mic SNR only gives 10-11 bits anyway
 int16_t sai1a_rx_buf[BUF_LEN] __attribute__((section(".dma_buffer")));      // DMA buffer:  cache disabled, D2 ram
@@ -43,9 +45,12 @@ uint8_t flag_chan01_half1_ready = 0;
 uint8_t flag_chan23_half1_ready = 0;
 uint8_t flag_chan45_half1_ready = 0;
 
-// FFT buffer and configuration
+// GCC-PHAT buffers and configuration
 arm_rfft_fast_instance_f32 rfft_conf;
 float32_t fft_buf[N_CHANS][FFT_LEN];
+float32_t gccphat_buf[N_CHANS-1][N_CHANS][FFT_LEN];
+float32_t temp_buf[FFT_LEN];
+int32_t tdoa_estimate[N_CHANS-1][N_CHANS];
 
 
 // Function prototypes
@@ -162,14 +167,69 @@ void deinterleave_and_convert(
     }
 }
 
-// Process filled half of buffer
+// Process the filled half of the audio buffer
 void process_samples(float32_t input_buf[N_CHANS][SAMPLES_PER_HALF_PER_CHAN])
 {
+    // Equations found here: https://xavieranguera.com/phdthesis/node92.html
+
     // Compute the FFT of each channel
     for (uint8_t i = 0; i < N_CHANS; ++i)
     {
+        /*
+         * Output:
+         * { real(X[0]), real(X[N/2]), real(X[1]), imag(X[1]), real(X[2]), imag(X[2]), ..., real(X[N/2-1]), imag(X[N/2-1]) }
+         */
         arm_rfft_fast_f32(&rfft_conf, input_buf[i], fft_buf[i], 0);
     }
+
+    // Iterate over upper triangle pairs
+    for (int i = 0; i < N_CHANS; ++i)
+    {
+        for (int j = 0; j < N_CHANS; ++j)
+        {
+            // Only compute upper triangle to avoid redundant computation
+            if (i >= j) continue;
+
+            // Compute the GCC-PHAT element-wise cross spectrums via multiplication and normalization of the FFT outputs
+            // The first two elements are not relevant to GCC-PHAT
+            gccphat_buf[i][j][0] = 0;   // DC component only contributes offset
+            gccphat_buf[i][j][1] = 0;   // Nyquist component only contributes phase
+
+            // The rest are interleaved complex pairs. Conjugate and multiply
+            arm_cmplx_conj_f32(&fft_buf[j][2], &temp_buf[2], N_CMPX_SAMPLES);
+            arm_cmplx_mult_cmplx_f32(&fft_buf[i][2], &temp_buf[2], &gccphat_buf[i][j][2], N_CMPX_SAMPLES);
+
+            // Element-wise PHAT normalization
+            arm_cmplx_mag_f32(&gccphat_buf[i][j][2], temp_buf, N_CMPX_SAMPLES);
+            for (int k = 0; k < N_CMPX_SAMPLES; ++k) {
+                if (temp_buf[k] > 1e-6f) {
+                    temp_buf[k] = 1.0f / temp_buf[k];
+                } else {
+                    temp_buf[k] = 0.0f; // Safely zero out bins with no energy
+                }
+            }
+            arm_cmplx_mult_real_f32(&gccphat_buf[i][j][2], temp_buf, &gccphat_buf[i][j][2], N_CMPX_SAMPLES);
+
+            // Compute cross-correlations between channels via iFFT of GCC-PHAT cross spectrums
+            arm_rfft_fast_f32(&rfft_conf, gccphat_buf[i][j], temp_buf, 1);
+
+            // Estimate time difference of arrival (TDOA)
+            uint32_t max_index;
+            arm_max_f32(temp_buf, FFT_LEN, NULL, &max_index);
+
+            if (max_index > (FFT_LEN/2))    // Account for circular iFFT output
+            {
+                tdoa_estimate[i][j] = (int32_t) max_index - (int32_t) FFT_LEN;
+            }
+            else
+            {
+                tdoa_estimate[i][j] = max_index;
+            }
+
+
+        }
+    }
+
 
 
 }
