@@ -1,4 +1,8 @@
 #MicroXplorer Configuration settings - do not modify
+ARM.CMSIS-DSP.1.17.1.CMSISJjDSP_Checked=false
+ARM.CMSIS-DSP.1.17.1_SwParameter=CMSISJjDSP\:Source;
+ARM.CMSIS.6.3.0.CMSISJjCORE_Checked=false
+ARM.CMSIS.6.3.0_SwParameter=CMSISJjCORE\:true;
 BSP_IP_NAME=NUCLEO-H723ZG
 Bdma.Request0=SAI4_A
 Bdma.RequestsNb=1
@@ -201,8 +205,10 @@ Mcu.Pin7=PH0-OSC_IN
 Mcu.Pin8=PH1-OSC_OUT
 Mcu.Pin9=PC1
 Mcu.PinsNb=44
-Mcu.ThirdParty0=STMicroelectronics.FP-SNS-STAIOTCFT.1.1.0
-Mcu.ThirdPartyNb=1
+Mcu.ThirdParty0=ARM.CMSIS-DSP.1.17.1
+Mcu.ThirdParty1=ARM.CMSIS.6.3.0
+Mcu.ThirdParty2=STMicroelectronics.FP-SNS-STAIOTCFT.1.1.0
+Mcu.ThirdPartyNb=3
 Mcu.UserConstants=
 Mcu.UserName=STM32H723ZGTx
 MxCube.Version=6.18.0

@@ -6,6 +6,9 @@ Completed:
 
 TODO:
 - Implement signal processing pipeline
+	- FFT every signal
+	- GCC using FFT's: element-wise multiplication? 
+	- Determine DOA
 
 
 Connections:

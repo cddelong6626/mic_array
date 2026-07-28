@@ -13,18 +13,21 @@
 
 
 // Double buffer made using circular buffer
+#define N_CHANS                     6
 #define SAMPLES_PER_HALF_PER_CHAN   256
 #define SAMPLES_PER_HALF            (SAMPLES_PER_HALF_PER_CHAN * 2)
 #define BUF_LEN                     (SAMPLES_PER_HALF * 2)
+#define FFT_LEN                     SAMPLES_PER_HALF_PER_CHAN
 
 // 16-bits rather than 24-bits per sample since mic SNR only gives 10-11 bits anyway
-int16_t sai1a_rx_buf[BUF_LEN] __attribute__((section(".dma_buffer")));      // DMA buffer: cache disabled
+int16_t sai1a_rx_buf[BUF_LEN] __attribute__((section(".dma_buffer")));      // DMA buffer:  cache disabled, D2 ram
 int16_t sai1b_rx_buf[BUF_LEN] __attribute__((section(".dma_buffer")));
 int16_t sai4a_rx_buf[BUF_LEN] __attribute__((section(".bdma_buffer")));     // BDMA buffer: cache disabled, D3 ram
 
 // 6 channels: sai1_BlockA(0,1)  sai1_BlockB(2,3)  sai4_BlockA(4,5)
-float32_t audio_buf[2][6][SAMPLES_PER_HALF_PER_CHAN];
+float32_t audio_buf[2][N_CHANS][SAMPLES_PER_HALF_PER_CHAN];
 
+// Flags to indicate when a DMA buffer half has been filled
 volatile uint8_t flag_sai1a_half0_filled = 0;
 volatile uint8_t flag_sai1b_half0_filled = 0;
 volatile uint8_t flag_sai4a_half0_filled = 0;
@@ -32,6 +35,7 @@ volatile uint8_t flag_sai1a_half1_filled = 0;
 volatile uint8_t flag_sai1b_half1_filled = 0;
 volatile uint8_t flag_sai4a_half1_filled = 0;
 
+// Flags to indicate when a buffer half is ready to be processed
 uint8_t flag_chan01_half0_ready = 0;
 uint8_t flag_chan23_half0_ready = 0;
 uint8_t flag_chan45_half0_ready = 0;
@@ -39,14 +43,18 @@ uint8_t flag_chan01_half1_ready = 0;
 uint8_t flag_chan23_half1_ready = 0;
 uint8_t flag_chan45_half1_ready = 0;
 
+// FFT buffer and configuration
+arm_rfft_fast_instance_f32 rfft_conf;
+float32_t fft_buf[N_CHANS][FFT_LEN];
+
 
 // Function prototypes
 void deinterleave_and_convert(
-        float32_t output_buf[6][SAMPLES_PER_HALF_PER_CHAN],
+        float32_t output_buf[N_CHANS][SAMPLES_PER_HALF_PER_CHAN],
         const int16_t *rx_buf,
         const uint8_t i_rchannel,
         const uint8_t i_lchannel);
-void process_samples(float32_t output_buf[6][SAMPLES_PER_HALF_PER_CHAN]);
+void process_samples(float32_t output_buf[N_CHANS][SAMPLES_PER_HALF_PER_CHAN]);
 
 
 // Initialization
@@ -61,6 +69,9 @@ HAL_StatusTypeDef app_init(void)
     ret_status |= HAL_SAI_Receive_DMA(&hsai_BlockB1, (uint8_t *)sai1b_rx_buf, BUF_LEN);
     ret_status |= HAL_SAI_Receive_DMA(&hsai_BlockA4, (uint8_t *)sai4a_rx_buf, BUF_LEN);
     ret_status |= HAL_SAI_Receive_DMA(&hsai_BlockA1, (uint8_t *)sai1a_rx_buf, BUF_LEN);
+
+    // Initialize the RFFT instance
+    arm_rfft_fast_init_f32(&rfft_conf, FFT_LEN);
 
     return ret_status;
 }
@@ -110,7 +121,7 @@ void app_loop(void)
         {
             flag_sai4a_half1_filled = 0;
             deinterleave_and_convert(audio_buf[1], &sai4a_rx_buf[SAMPLES_PER_HALF], 4, 5);
-            flag_sai4a_half1_filled = 1;
+            flag_chan45_half1_ready = 1;
         }
 
         // When half of the buffer is filled: process that half
@@ -136,7 +147,7 @@ void app_loop(void)
 
 // Transfers data from interleaved fixed point DMA buffers to a normalized, multi-channel float buffer
 void deinterleave_and_convert(
-        float32_t output_buf[6][SAMPLES_PER_HALF_PER_CHAN],
+        float32_t output_buf[N_CHANS][SAMPLES_PER_HALF_PER_CHAN],
         const int16_t *rx_buf,
         const uint8_t i_rchannel,
         const uint8_t i_lchannel)
@@ -152,9 +163,15 @@ void deinterleave_and_convert(
 }
 
 // Process filled half of buffer
-void process_samples(float32_t output_buf[6][SAMPLES_PER_HALF_PER_CHAN])
+void process_samples(float32_t input_buf[N_CHANS][SAMPLES_PER_HALF_PER_CHAN])
 {
-   // Do shit
+    // Compute the FFT of each channel
+    for (uint8_t i = 0; i < N_CHANS; ++i)
+    {
+        arm_rfft_fast_f32(&rfft_conf, input_buf[i], fft_buf[i], 0);
+    }
+
+
 }
 
 
