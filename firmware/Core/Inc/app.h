@@ -20,11 +20,9 @@ extern DMA_HandleTypeDef hdma_spi6_rx;
 extern SAI_HandleTypeDef hsai_BlockA1;
 extern SAI_HandleTypeDef hsai_BlockB1;
 extern SAI_HandleTypeDef hsai_BlockA4;
-extern SAI_HandleTypeDef hsai_BlockB4;
 extern DMA_HandleTypeDef hdma_sai1_a;
 extern DMA_HandleTypeDef hdma_sai1_b;
 extern DMA_HandleTypeDef hdma_sai4_a;
-extern DMA_HandleTypeDef hdma_sai4_b;
 
 extern SPI_HandleTypeDef hspi4;
 

@@ -2,7 +2,7 @@
  * app.c
  *
  *  Created on: Jul 12, 2026
- *      Author: Cole
+ *      Author: Cole Delong
  */
 
 #include <stdint.h>
@@ -13,7 +13,7 @@
 
 
 // Double buffer made using circular buffer
-#define SAMPLES_PER_HALF_PER_CHAN   128
+#define SAMPLES_PER_HALF_PER_CHAN   256
 #define SAMPLES_PER_HALF            (SAMPLES_PER_HALF_PER_CHAN * 2)
 #define BUF_LEN                     (SAMPLES_PER_HALF * 2)
 
@@ -21,45 +21,35 @@
 int16_t sai1a_rx_buf[BUF_LEN] __attribute__((section(".dma_buffer")));      // DMA buffer: cache disabled
 int16_t sai1b_rx_buf[BUF_LEN] __attribute__((section(".dma_buffer")));
 int16_t sai4a_rx_buf[BUF_LEN] __attribute__((section(".bdma_buffer")));     // BDMA buffer: cache disabled, D3 ram
-int16_t sai4b_rx_buf[BUF_LEN] __attribute__((section(".bdma_buffer")));
 
-// 8 channels: sai1_BlockA(0,1)  sai1_BlockB(2,3)  sai4_BlockA(4,5)  sai4_BlockB(6,7)
-float32_t audio_buf[8][SAMPLES_PER_HALF_PER_CHAN];
+// 6 channels: sai1_BlockA(0,1)  sai1_BlockB(2,3)  sai4_BlockA(4,5)
+float32_t audio_buf[2][6][SAMPLES_PER_HALF_PER_CHAN];
 
-volatile char flag_sai1a_half_filled = 0;
-volatile char flag_sai1a_full_filled = 0;
-volatile char flag_sai1b_half_filled = 0;
-volatile char flag_sai1b_full_filled = 0;
-volatile char flag_sai4a_half_filled = 0;
-volatile char flag_sai4a_full_filled = 0;
-volatile char flag_sai4b_half_filled = 0;
-volatile char flag_sai4b_full_filled = 0;
+volatile uint8_t flag_sai1a_half0_filled = 0;
+volatile uint8_t flag_sai1b_half0_filled = 0;
+volatile uint8_t flag_sai4a_half0_filled = 0;
+volatile uint8_t flag_sai1a_half1_filled = 0;
+volatile uint8_t flag_sai1b_half1_filled = 0;
+volatile uint8_t flag_sai4a_half1_filled = 0;
 
-int i_led;
-volatile int x = 0;
-
-volatile int x1a = 0;
-volatile int x1b = 0;
-volatile int x4a = 0;
-volatile int x4b = 0;
+uint8_t flag_chan01_half0_ready = 0;
+uint8_t flag_chan23_half0_ready = 0;
+uint8_t flag_chan45_half0_ready = 0;
+uint8_t flag_chan01_half1_ready = 0;
+uint8_t flag_chan23_half1_ready = 0;
+uint8_t flag_chan45_half1_ready = 0;
 
 
-
-void deinterleave_and_convert(const int16_t *rx_buf, const uint8_t i_rchannel, const uint8_t i_lchannel)
-{
-    for (uint32_t i = 0; i < SAMPLES_PER_HALF_PER_CHAN; ++i)
-    {
-        int16_t left_rx  = rx_buf[i * 2 + 0];
-        int16_t right_rx = rx_buf[i * 2 + 1];
-
-        audio_buf[i_lchannel][i] = (float32_t)left_rx  / 32768.0f;
-        audio_buf[i_rchannel][i] = (float32_t)right_rx / 32768.0f;
-    }
-}
+// Function prototypes
+void deinterleave_and_convert(
+        float32_t output_buf[6][SAMPLES_PER_HALF_PER_CHAN],
+        const int16_t *rx_buf,
+        const uint8_t i_rchannel,
+        const uint8_t i_lchannel);
+void process_samples(float32_t output_buf[6][SAMPLES_PER_HALF_PER_CHAN]);
 
 
-
-// Initialization and loop functions
+// Initialization
 HAL_StatusTypeDef app_init(void)
 {
     HAL_StatusTypeDef ret_status = HAL_OK;
@@ -70,117 +60,121 @@ HAL_StatusTypeDef app_init(void)
     // Slave block(s) must be armed before the master starts clocking
     ret_status |= HAL_SAI_Receive_DMA(&hsai_BlockB1, (uint8_t *)sai1b_rx_buf, BUF_LEN);
     ret_status |= HAL_SAI_Receive_DMA(&hsai_BlockA4, (uint8_t *)sai4a_rx_buf, BUF_LEN);
-    ret_status |= HAL_SAI_Receive_DMA(&hsai_BlockB4, (uint8_t *)sai4b_rx_buf, BUF_LEN);
     ret_status |= HAL_SAI_Receive_DMA(&hsai_BlockA1, (uint8_t *)sai1a_rx_buf, BUF_LEN);
-
-    i_led = 0;
 
     return ret_status;
 }
 
+// Main loop
 void app_loop(void)
 {
-    HAL_StatusTypeDef ret_status;
     while (1)
     {
-        if (flag_sai1a_half_filled)
+        // Transfer data from interleaved DMA buffers to multi-channel buffer
+        if (flag_sai1a_half0_filled)
         {
-            deinterleave_and_convert(&sai1a_rx_buf[0], 0, 1);
-            flag_sai1a_half_filled = 0;
-        }
-        if (flag_sai1a_full_filled)
-        {
-            deinterleave_and_convert(&sai1a_rx_buf[SAMPLES_PER_HALF], 0, 1);
-            flag_sai1a_full_filled = 0;
-        }
-        if (flag_sai1b_half_filled)
-        {
-            deinterleave_and_convert(&sai1b_rx_buf[0], 2, 3);
-            flag_sai1b_half_filled = 0;
-        }
-        if (flag_sai1b_full_filled)
-        {
-            deinterleave_and_convert(&sai1b_rx_buf[SAMPLES_PER_HALF], 2, 3);
-            flag_sai1b_full_filled = 0;
-        }
-        if (flag_sai4a_half_filled)
-        {
-            deinterleave_and_convert(&sai4a_rx_buf[0], 4, 5);
-            flag_sai4a_half_filled = 0;
-        }
-        if (flag_sai4a_full_filled)
-        {
-            deinterleave_and_convert(&sai4a_rx_buf[SAMPLES_PER_HALF], 4, 5);
-            flag_sai4a_full_filled = 0;
-        }
-        if (flag_sai4b_half_filled)
-        {
-            deinterleave_and_convert(&sai4b_rx_buf[0], 6, 7);
-            flag_sai4b_half_filled = 0;
-        }
-        if (flag_sai4b_full_filled)
-        {
-            deinterleave_and_convert(&sai4b_rx_buf[SAMPLES_PER_HALF], 6, 7);
-            flag_sai4b_full_filled = 0;
+            flag_sai1a_half0_filled = 0;
+            deinterleave_and_convert(audio_buf[0], &sai1a_rx_buf[0], 0, 1);
+            flag_chan01_half0_ready = 1;
         }
 
-        printf("s1a:%6d s1b:%6d s4a:%6d s4b:%6d | c: %6d %6d %6d %6d\n\r",
-               sai1a_rx_buf[0], sai1b_rx_buf[0], sai4a_rx_buf[0], sai4b_rx_buf[1],
-               x1a, x1b, x4a, x4b);
-        HAL_Delay(100);
+        if (flag_sai1b_half0_filled)
+        {
+            flag_sai1b_half0_filled = 0;
+            deinterleave_and_convert(audio_buf[0], &sai1b_rx_buf[0], 2, 3);
+            flag_chan23_half0_ready = 1;
+        }
+
+        if (flag_sai4a_half0_filled)
+        {
+            flag_sai4a_half0_filled = 0;
+            deinterleave_and_convert(audio_buf[0], &sai4a_rx_buf[0], 4, 5);
+            flag_chan45_half0_ready = 1;
+        }
+
+        if (flag_sai1a_half1_filled)
+        {
+            flag_sai1a_half1_filled = 0;
+            deinterleave_and_convert(audio_buf[1], &sai1a_rx_buf[SAMPLES_PER_HALF], 0, 1);
+            flag_chan01_half1_ready = 1;
+        }
+
+        if (flag_sai1b_half1_filled)
+        {
+            flag_sai1b_half1_filled = 0;
+            deinterleave_and_convert(audio_buf[1], &sai1b_rx_buf[SAMPLES_PER_HALF], 2, 3);
+            flag_chan23_half1_ready = 1;
+        }
+
+        if (flag_sai4a_half1_filled)
+        {
+            flag_sai4a_half1_filled = 0;
+            deinterleave_and_convert(audio_buf[1], &sai4a_rx_buf[SAMPLES_PER_HALF], 4, 5);
+            flag_sai4a_half1_filled = 1;
+        }
+
+        // When half of the buffer is filled: process that half
+        if (flag_chan01_half0_ready && flag_chan23_half0_ready && flag_chan45_half0_ready)
+        {
+            flag_chan01_half0_ready = 0;
+            flag_chan23_half0_ready = 0;
+            flag_chan45_half0_ready = 0;
+
+            process_samples(audio_buf[0]);
+        }
+        if (flag_chan01_half1_ready && flag_chan23_half1_ready && flag_chan45_half1_ready)
+        {
+            flag_chan01_half1_ready = 0;
+            flag_chan23_half1_ready = 0;
+            flag_chan45_half1_ready = 0;
+
+            process_samples(audio_buf[1]);
+        }
     }
-
 }
+
+
+// Transfers data from interleaved fixed point DMA buffers to a normalized, multi-channel float buffer
+void deinterleave_and_convert(
+        float32_t output_buf[6][SAMPLES_PER_HALF_PER_CHAN],
+        const int16_t *rx_buf,
+        const uint8_t i_rchannel,
+        const uint8_t i_lchannel)
+{
+    for (uint32_t i = 0; i < SAMPLES_PER_HALF_PER_CHAN; ++i)
+    {
+        int16_t left_rx  = rx_buf[i * 2 + 0];
+        int16_t right_rx = rx_buf[i * 2 + 1];
+
+        output_buf[i_lchannel][i] = (float32_t) left_rx;
+        output_buf[i_rchannel][i] = (float32_t) right_rx;
+    }
+}
+
+// Process filled half of buffer
+void process_samples(float32_t output_buf[6][SAMPLES_PER_HALF_PER_CHAN])
+{
+   // Do shit
+}
+
 
 
 // HAL callback functions
 void HAL_SAI_RxHalfCpltCallback(SAI_HandleTypeDef *hsai)
 {
-    if (hsai->Instance == hsai_BlockA1.Instance)
-    {
-        flag_sai1a_half_filled = 1;
-        x1a++;
-    }
-    else if (hsai->Instance == hsai_BlockB1.Instance)
-    {
-        flag_sai1b_half_filled = 1;
-        x1b++;
-    }
-    else if (hsai->Instance == hsai_BlockA4.Instance)
-    {
-        flag_sai4a_half_filled = 1;
-        x4a++;
-    }
-    else if (hsai->Instance == hsai_BlockB4.Instance)
-    {
-        flag_sai4b_half_filled = 1;
-        x4b++;
-    }
+    if      (hsai->Instance == hsai_BlockA1.Instance) flag_sai1a_half0_filled = 1;
+    else if (hsai->Instance == hsai_BlockB1.Instance) flag_sai1b_half0_filled = 1;
+    else if (hsai->Instance == hsai_BlockA4.Instance) flag_sai4a_half0_filled = 1;
 }
 
 void HAL_SAI_RxCpltCallback(SAI_HandleTypeDef *hsai)
 {
-    if (hsai->Instance == hsai_BlockA1.Instance)
-    {
-        flag_sai1a_full_filled = 1;
-    }
-    else if (hsai->Instance == hsai_BlockB1.Instance)
-    {
-        flag_sai1b_full_filled = 1;
-    }
-    else if (hsai->Instance == hsai_BlockA4.Instance)
-    {
-        flag_sai4a_full_filled = 1;
-    }
-    else if (hsai->Instance == hsai_BlockB4.Instance)
-    {
-        flag_sai4b_full_filled = 1;
-    }
+    if      (hsai->Instance == hsai_BlockA1.Instance) flag_sai1a_half1_filled = 1;
+    else if (hsai->Instance == hsai_BlockB1.Instance) flag_sai1b_half1_filled = 1;
+    else if (hsai->Instance == hsai_BlockA4.Instance) flag_sai4a_half1_filled = 1;
 }
 
 
-// Override system call to route "printf" calls over the ST-Link to the PC
-int __io_putchar(int ch) {
-    HAL_UART_Transmit(&huart3, (uint8_t *)&ch, 1, HAL_MAX_DELAY);
-    return ch;
-}
+
+
+

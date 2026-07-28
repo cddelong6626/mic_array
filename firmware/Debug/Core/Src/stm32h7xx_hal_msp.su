@@ -9,5 +9,5 @@
 ../Core/Src/stm32h7xx_hal_msp.c:410:6:HAL_HCD_MspInit	232	static
 ../Core/Src/stm32h7xx_hal_msp.c:466:6:HAL_PCD_MspDeInit	16	static
 ../Core/Src/stm32h7xx_hal_msp.c:495:6:HAL_HCD_MspDeInit	16	static
-../Core/Src/stm32h7xx_hal_msp.c:529:6:HAL_SAI_MspInit	240	static
-../Core/Src/stm32h7xx_hal_msp.c:753:6:HAL_SAI_MspDeInit	16	static
+../Core/Src/stm32h7xx_hal_msp.c:527:6:HAL_SAI_MspInit	240	static
+../Core/Src/stm32h7xx_hal_msp.c:701:6:HAL_SAI_MspDeInit	16	static

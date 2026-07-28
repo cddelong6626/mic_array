@@ -1,6 +1,6 @@
-../Core/Src/app.c:48:6:deinterleave_and_convert	24	static
-../Core/Src/app.c:63:19:app_init	16	static
-../Core/Src/app.c:109:6:app_loop	48	static
-../Core/Src/app.c:165:6:HAL_SAI_RxHalfCpltCallback	16	static
-../Core/Src/app.c:189:6:HAL_SAI_RxCpltCallback	16	static
-../Core/Src/app.c:211:5:__io_putchar	16	static
+../Core/Src/app.c:53:19:app_init	16	static
+../Core/Src/app.c:69:6:app_loop	8	static
+../Core/Src/app.c:138:6:deinterleave_and_convert	32	static
+../Core/Src/app.c:155:6:process_samples	16	static
+../Core/Src/app.c:163:6:HAL_SAI_RxHalfCpltCallback	16	static
+../Core/Src/app.c:170:6:HAL_SAI_RxCpltCallback	16	static

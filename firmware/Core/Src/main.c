@@ -66,11 +66,9 @@ ETH_HandleTypeDef heth;
 SAI_HandleTypeDef hsai_BlockA1;
 SAI_HandleTypeDef hsai_BlockB1;
 SAI_HandleTypeDef hsai_BlockA4;
-SAI_HandleTypeDef hsai_BlockB4;
 DMA_HandleTypeDef hdma_sai1_a;
 DMA_HandleTypeDef hdma_sai1_b;
 DMA_HandleTypeDef hdma_sai4_a;
-DMA_HandleTypeDef hdma_sai4_b;
 
 SPI_HandleTypeDef hspi4;
 
@@ -96,6 +94,7 @@ static void MX_SPI4_Init(void);
 static void MX_SAI1_Init(void);
 static void MX_SAI4_Init(void);
 /* USER CODE BEGIN PFP */
+
 /* USER CODE END PFP */
 
 /* Private user code ---------------------------------------------------------*/
@@ -359,18 +358,6 @@ static void MX_SAI4_Init(void)
   {
     Error_Handler();
   }
-  hsai_BlockB4.Instance = SAI4_Block_B;
-  hsai_BlockB4.Init.AudioMode = SAI_MODESLAVE_RX;
-  hsai_BlockB4.Init.Synchro = SAI_SYNCHRONOUS;
-  hsai_BlockB4.Init.OutputDrive = SAI_OUTPUTDRIVE_DISABLE;
-  hsai_BlockB4.Init.FIFOThreshold = SAI_FIFOTHRESHOLD_EMPTY;
-  hsai_BlockB4.Init.MonoStereoMode = SAI_STEREOMODE;
-  hsai_BlockB4.Init.CompandingMode = SAI_NOCOMPANDING;
-  hsai_BlockB4.Init.TriState = SAI_OUTPUT_NOTRELEASED;
-  if (HAL_SAI_InitProtocol(&hsai_BlockB4, SAI_I2S_STANDARD, SAI_PROTOCOL_DATASIZE_16BITEXTENDED, 2) != HAL_OK)
-  {
-    Error_Handler();
-  }
   /* USER CODE BEGIN SAI4_Init 2 */
 
   /* USER CODE END SAI4_Init 2 */
@@ -554,9 +541,6 @@ static void MX_BDMA_Init(void)
   /* BDMA_Channel0_IRQn interrupt configuration */
   HAL_NVIC_SetPriority(BDMA_Channel0_IRQn, 0, 0);
   HAL_NVIC_EnableIRQ(BDMA_Channel0_IRQn);
-  /* BDMA_Channel1_IRQn interrupt configuration */
-  HAL_NVIC_SetPriority(BDMA_Channel1_IRQn, 0, 0);
-  HAL_NVIC_EnableIRQ(BDMA_Channel1_IRQn);
 
 }
 
@@ -661,6 +645,12 @@ static void MX_GPIO_Init(void)
 }
 
 /* USER CODE BEGIN 4 */
+// Override system call to route "printf" calls over the ST-Link to the PC
+int __io_putchar(int ch) {
+    HAL_UART_Transmit(&huart3, (uint8_t *)&ch, 1, HAL_MAX_DELAY);
+    return ch;
+}
+
 /* USER CODE END 4 */
 
  /* MPU Configuration */
