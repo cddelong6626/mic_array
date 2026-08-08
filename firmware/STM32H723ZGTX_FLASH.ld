@@ -47,10 +47,10 @@ MEMORY
   DTCMRAM (xrw)    : ORIGIN = 0x20000000,   LENGTH = 128K
   FLASH    (rx)    : ORIGIN = 0x08000000,   LENGTH = 1024K
   RAM_D1  (xrw)    : ORIGIN = 0x24000000,   LENGTH = 320K
-  RAM_D2  (xrw)    : ORIGIN = 0x30000000,   LENGTH = 28K
-  RAM_D3  (xrw)    : ORIGIN = 0x38000000,   LENGTH = 12K
-  DMA_RAM (xrw)		 : ORIGIN = 0x30007000,		LENGTH = 4K
-  BDMA_RAM (xrw)	 : ORIGIN = 0x38003000, 	LENGTH = 4K
+  RAM_D2  (xrw)    : ORIGIN = 0x30000000,   LENGTH = 16K
+  RAM_D3  (xrw)    : ORIGIN = 0x38000000,   LENGTH = 8K
+  DMA_RAM (xrw)		 : ORIGIN = 0x30004000,		LENGTH = 16K
+  BDMA_RAM (xrw)	 : ORIGIN = 0x38002000, 	LENGTH = 8K
 }
 
 /* Define output sections */

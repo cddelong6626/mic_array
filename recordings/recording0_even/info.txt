@@ -1,0 +1,9 @@
+Recording took while playing 440 Hz above the array, at approximately an equal distance from each mic.
+
+GCC-PHAT delays relative to channel 1:
+  Ch 1: +0.000 samples (+0.000 ms)
+  Ch 2: +0.000 samples (+0.000 ms)
+  Ch 3: +0.000 samples (+0.000 ms)
+  Ch 4: +0.000 samples (+0.000 ms)
+  Ch 5: +0.000 samples (+0.000 ms)
+  Ch 6: +0.000 samples (+0.000 ms)

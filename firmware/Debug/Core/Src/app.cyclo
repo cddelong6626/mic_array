@@ -1,6 +1,6 @@
-../Core/Src/app.c:66:19:app_init	1
-../Core/Src/app.c:85:6:app_loop	13
-../Core/Src/app.c:154:6:deinterleave_and_convert	2
-../Core/Src/app.c:171:6:process_samples	8
-../Core/Src/app.c:240:6:HAL_SAI_RxHalfCpltCallback	4
-../Core/Src/app.c:247:6:HAL_SAI_RxCpltCallback	4
+../Core/Src/app.c:84:19:app_init	2
+../Core/Src/app.c:107:6:app_loop	14
+../Core/Src/app.c:197:6:deinterleave_and_convert	2
+../Core/Src/app.c:215:6:process_samples	11
+../Core/Src/app.c:329:6:HAL_SAI_RxHalfCpltCallback	4
+../Core/Src/app.c:336:6:HAL_SAI_RxCpltCallback	4

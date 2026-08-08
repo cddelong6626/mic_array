@@ -1,16 +1,3 @@
-Completed:
-- Select and order parts
-- Get base working stm32 nucleo project working
-- Write driver for the SK9822 LED array
-- Access microphone array signals
-
-TODO:
-- Implement signal processing pipeline
-	- FFT every signal
-	- GCC using FFT's: element-wise multiplication? 
-	- Determine DOA
-
-
 Connections:
 - LED strip: SPI4 (Master, SCK=PE2, MOSI=PE6)
 - MIC_D0 (U7, U8): I2S2 (Master, SDI=PC2, WS=PB12, BCK=PB10)
