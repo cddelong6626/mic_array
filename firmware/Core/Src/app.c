@@ -13,12 +13,14 @@
 #include "sk9822.h"
 
 
-// Double buffer made using circular buffer
+// Adjustable parameters
 #define MAX_LAG_SAMPLES             18
 #define FRAMES_PER_LED_UPDATE       10
+#define SAMPLES_PER_HALF_PER_CHAN   1024
+
+// Other parameters
 #define SAMPLE_RATE                 53710
 #define N_CHANS                     6
-#define SAMPLES_PER_HALF_PER_CHAN   1024
 #define SAMPLES_PER_HALF            (SAMPLES_PER_HALF_PER_CHAN * 2)
 #define BUF_LEN                     (SAMPLES_PER_HALF * 2)
 #define FFT_LEN                     SAMPLES_PER_HALF_PER_CHAN
@@ -61,7 +63,7 @@ const float32_t biquad_coeffs[5 * 2] = {    // 4th order DF1 SOS bandpass, 200Hz
 };
 
 float32_t fft_buf[N_CHANS][FFT_LEN];
-float32_t gccphat_buf[N_CHANS-1][N_CHANS][FFT_LEN];
+float32_t gccphat_buf[N_CHAN_PAIRS][FFT_LEN];
 float32_t scratch_buf[FFT_LEN];
 float32_t tdoa_estimate_sec[N_CHAN_PAIRS];
 
@@ -236,15 +238,15 @@ void process_samples(float32_t input_buf[N_CHANS][SAMPLES_PER_HALF_PER_CHAN])
         {
             // Compute the GCC-PHAT element-wise cross spectrums via multiplication and normalization of the FFT outputs
             // The first two elements are not relevant to GCC-PHAT
-            gccphat_buf[i][j][0] = 0;
-            gccphat_buf[i][j][1] = 0;
+            gccphat_buf[i_pair][0] = 0;
+            gccphat_buf[i_pair][1] = 0;
 
             // The rest are interleaved complex pairs. Conjugate and multiply
             arm_cmplx_conj_f32(&fft_buf[j][2], &scratch_buf[2], N_CMPX_SAMPLES);
-            arm_cmplx_mult_cmplx_f32(&fft_buf[i][2], &scratch_buf[2], &gccphat_buf[i][j][2], N_CMPX_SAMPLES);
+            arm_cmplx_mult_cmplx_f32(&fft_buf[i][2], &scratch_buf[2], &gccphat_buf[i_pair][2], N_CMPX_SAMPLES);
 
             // Element-wise PHAT normalization
-            arm_cmplx_mag_f32(&gccphat_buf[i][j][2], scratch_buf, N_CMPX_SAMPLES);
+            arm_cmplx_mag_f32(&gccphat_buf[i_pair][2], scratch_buf, N_CMPX_SAMPLES);
             for (int k = 0; k < N_CMPX_SAMPLES; ++k) {
                 if (scratch_buf[k] > 1e-6f)
                 {
@@ -255,10 +257,10 @@ void process_samples(float32_t input_buf[N_CHANS][SAMPLES_PER_HALF_PER_CHAN])
                     scratch_buf[k] = 0.0f; // Safely zero out bins with no energy
                 }
             }
-            arm_cmplx_mult_real_f32(&gccphat_buf[i][j][2], scratch_buf, &gccphat_buf[i][j][2], N_CMPX_SAMPLES);
+            arm_cmplx_mult_real_f32(&gccphat_buf[i_pair][2], scratch_buf, &gccphat_buf[i_pair][2], N_CMPX_SAMPLES);
 
             // Compute cross-correlations between channels via iFFT of GCC-PHAT cross spectrums
-            arm_rfft_fast_f32(&rfft_conf, gccphat_buf[i][j], scratch_buf, 1);
+            arm_rfft_fast_f32(&rfft_conf, gccphat_buf[i_pair], scratch_buf, 1);
 
             // Estimate time difference of arrival (TDOA)
             float32_t tdoa_estimate_samp_ij;
