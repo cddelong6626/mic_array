@@ -1,3 +1,0 @@
-../Core/Src/sk9822.c:34:19:sk9822_init	24	static
-../Core/Src/sk9822.c:60:19:sk9822_send_update	8	static
-../Core/Src/sk9822.c:66:6:sk9822_edit_led	24	static

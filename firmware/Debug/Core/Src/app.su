@@ -1,6 +1,0 @@
-../Core/Src/app.c:84:19:app_init	16	static
-../Core/Src/app.c:107:6:app_loop	24	static
-../Core/Src/app.c:197:6:deinterleave_and_convert	40	static
-../Core/Src/app.c:215:6:process_samples	208	static
-../Core/Src/app.c:329:6:HAL_SAI_RxHalfCpltCallback	16	static
-../Core/Src/app.c:336:6:HAL_SAI_RxCpltCallback	16	static

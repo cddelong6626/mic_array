@@ -1,0 +1,21 @@
+# --- Build Artifacts ---
+[Dd]ebug/
+[Rr]elease/
+*.elf
+*.bin
+*.hex
+*.map
+*.o
+*.su
+*.d
+
+# --- Eclipse / STM32CubeIDE User Specific Files ---
+.metadata/
+.settings/
+*.launch
+*.jlink
+*.log
+
+# --- Toolchain and Temporary Files ---
+Core/Startup/cc*.s
+*.local
