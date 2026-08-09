@@ -6,7 +6,7 @@ RADIUS_M = RADIUS_CM/100;
 positions = [];
 for i = 1:N_MICS
     theta = (i-1) * 360/N_MICS;
-    positions = [positions; RADIUS_M*cos(theta) RADIUS_M*sin(theta)];
+    positions = [positions; RADIUS_M*cosd(theta) RADIUS_M*sind(theta)];
 end
 
 

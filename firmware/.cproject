@@ -84,9 +84,9 @@
 						</toolChain>
 					</folderInfo>
 					<sourceEntries>
-						<entry excluding="Src/app_mic_test.c" flags="VALUE_WORKSPACE_PATH|RESOLVED" kind="sourcePath" name="Core"/>
 						<entry excluding="CMSIS|CMSIS/DSP|CMSIS/DSP/dsppp" flags="VALUE_WORKSPACE_PATH|RESOLVED" kind="sourcePath" name="Drivers"/>
 						<entry excluding="Source/BayesFunctions/BayesFunctionsF16.c|Source/BayesFunctions/BayesFunctions.c|Source/BasicMathFunctions/BasicMathFunctionsF16.c|Source/BasicMathFunctions/BasicMathFunctions.c" flags="VALUE_WORKSPACE_PATH|RESOLVED" kind="sourcePath" name="Drivers/CMSIS/DSP"/>
+						<entry excluding="Src/app_mic_test.c" flags="VALUE_WORKSPACE_PATH|RESOLVED" kind="sourcePath" name="Core"/>
 						<entry flags="VALUE_WORKSPACE_PATH|RESOLVED" kind="sourcePath" name="Drivers/CMSIS/Device"/>
 						<entry flags="VALUE_WORKSPACE_PATH|RESOLVED" kind="sourcePath" name="Drivers/CMSIS/Include"/>
 					</sourceEntries>
@@ -169,9 +169,9 @@
 						</toolChain>
 					</folderInfo>
 					<sourceEntries>
-						<entry excluding="Src/app_mic_test.c" flags="VALUE_WORKSPACE_PATH|RESOLVED" kind="sourcePath" name="Core"/>
 						<entry excluding="CMSIS|CMSIS/DSP|CMSIS/DSP/dsppp" flags="VALUE_WORKSPACE_PATH|RESOLVED" kind="sourcePath" name="Drivers"/>
 						<entry excluding="Source/BayesFunctions/BayesFunctionsF16.c|Source/BayesFunctions/BayesFunctions.c|Source/BasicMathFunctions/BasicMathFunctionsF16.c|Source/BasicMathFunctions/BasicMathFunctions.c" flags="VALUE_WORKSPACE_PATH|RESOLVED" kind="sourcePath" name="Drivers/CMSIS/DSP"/>
+						<entry excluding="Src/app_mic_test.c" flags="VALUE_WORKSPACE_PATH|RESOLVED" kind="sourcePath" name="Core"/>
 						<entry flags="VALUE_WORKSPACE_PATH|RESOLVED" kind="sourcePath" name="Drivers/CMSIS/Device"/>
 						<entry flags="VALUE_WORKSPACE_PATH|RESOLVED" kind="sourcePath" name="Drivers/CMSIS/Include"/>
 					</sourceEntries>

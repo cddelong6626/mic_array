@@ -15,11 +15,11 @@
 
 // Adjustable parameters
 #define MAX_LAG_SAMPLES             18
-#define FRAMES_PER_LED_UPDATE       10
+#define FRAMES_PER_LED_UPDATE       1
 #define SAMPLES_PER_HALF_PER_CHAN   1024
 
 // Other parameters
-#define SAMPLE_RATE                 53710
+#define SAMPLE_RATE                 15797
 #define N_CHANS                     6
 #define SAMPLES_PER_HALF            (SAMPLES_PER_HALF_PER_CHAN * 2)
 #define BUF_LEN                     (SAMPLES_PER_HALF * 2)
@@ -55,11 +55,11 @@ uint8_t flag_chan45_half1_ready = 0;
 arm_rfft_fast_instance_f32 rfft_conf;
 arm_biquad_casd_df1_inst_f32 iirfilt_conf[N_CHANS];
 float32_t biquad_state[N_CHANS][4 * 2] = {0};
-const float32_t biquad_coeffs[5 * 2] = {    // 4th order DF1 SOS bandpass, 200Hz to 4000 Hz
+const float32_t biquad_coeffs[5 * 2] = {    // 4th order DF1 SOS bandpass, 100Hz to 3000 Hz, fs=15797 Hz
     // Stage 1
-    0.0324118016379227, 0.0648236032758455, 0.0324118016379227, 1.52225273968609, -0.705601494804826,
+    0.180596607689788, 0.361193215379576, 0.180596607689788, 0.482059939292023, -0.227137695705591,
     // Stage 2
-    0.0536542717590883, 0.107308543518177, 0.0536542717590883, 1.25996445342187, -0.411721719482958
+    1, -2, 1, 1.94387140037728, -0.945499607031652
 };
 
 float32_t fft_buf[N_CHANS][FFT_LEN];
@@ -180,11 +180,21 @@ void app_loop(void)
             arm_atan2_f32(u_sum[1], u_sum[0], &theta);
 
             int i_led_new = round((theta + PI) * N_LEDS/(2*PI));
-            i_led_new %= 12;
 
-            sk9822_edit_led(i_led_cur, 255, 255, 255, 0);
+//            if (i_led_cur-1 < 0) sk9822_edit_led(11, 255, 255, 255, 0);
+//            else sk9822_edit_led((i_led_cur-1) % 12, 255, 255, 255, 0);
+//            if (i_led_cur+1 > 11) sk9822_edit_led(0, 255, 255, 255, 0);
+//            else sk9822_edit_led((i_led_cur+1) % 12, 255, 255, 255, 0);
+            sk9822_edit_led((i_led_cur+0) % 12, 255, 255, 255, 0);
+
             i_led_cur = i_led_new;
-            sk9822_edit_led(i_led_cur, 255, 255, 255, 31);
+
+//            if (i_led_cur-1 < 0) sk9822_edit_led(11, 255, 255, 255, 10);
+//            else sk9822_edit_led((i_led_cur-1) % 12, 255, 255, 255, 10);
+//            if (i_led_cur+1 > 11) sk9822_edit_led(0, 255, 255, 255, 10);
+//            else sk9822_edit_led((i_led_cur+1) % 12, 255, 255, 255, 10);
+            sk9822_edit_led((i_led_cur+0) % 12, 255, 255, 255, 10);
+
             sk9822_send_update();
 
             n_frames_since_led_update = 0;
@@ -287,7 +297,7 @@ void process_samples(float32_t input_buf[N_CHANS][SAMPLES_PER_HALF_PER_CHAN])
                 delta = 0.0f;
             }
 
-            tdoa_estimate_samp_ij = (float32_t) idx_max + delta;
+            tdoa_estimate_samp_ij = (float32_t)idx_max + delta;
 
             // Account for circular iFFT output
             if (tdoa_estimate_samp_ij > (FFT_LEN/2))    // Account for circular iFFT output
@@ -309,15 +319,15 @@ void process_samples(float32_t input_buf[N_CHANS][SAMPLES_PER_HALF_PER_CHAN])
 
     // Least squares geometry solver (M generated with geometry_solver_matrix_generator.m)
     const float M[2][15] = {
-        {3.585270547f, 1.027346524f, 2.314476061f, 2.420642327f, 0.931284531f, -2.557924022f, -1.270794486f, -1.164628220f, -2.653986016f, 1.287129537f, 1.393295803f, -0.096061993f, 0.106166266f, -1.383191530f, -1.489357796f},
-        {-1.568963232f, -1.406235762f, -0.147240040f, -2.708135246f, 0.910928704f, 0.162727471f, 1.421723193f, -1.139172014f, 2.479891936f, 1.258995722f, -1.301899484f, 2.317164466f, -2.560895206f, 1.058168744f, 3.619063950f}
+        {0.694444444f, 2.083333333f, 2.777777778f, 2.083333333f, 0.694444444f, 1.388888889f, 2.083333333f, 1.388888889f, 0.000000000f, 0.694444444f, 0.000000000f, -1.388888889f, -0.694444444f, -2.083333333f, -1.388888889f},
+        {-1.202813061f, -1.202813061f, -0.000000000f, 1.202813061f, 1.202813061f, -0.000000000f, 1.202813061f, 2.405626122f, 2.405626122f, 1.202813061f, 2.405626122f, 2.405626122f, 1.202813061f, 1.202813061f, 0.000000000f}
     };
 
     float32_t u[2] = {0.0f, 0.0f};
     for (int i = 0; i < 15; ++i)
     {
-        u[0] -= M[0][i] * tdoa_estimate_sec[i];
-        u[1] -= M[1][i] * tdoa_estimate_sec[i];
+        u[0] += M[0][i] * tdoa_estimate_sec[i];
+        u[1] += M[1][i] * tdoa_estimate_sec[i];
     }
 
     // Add vector components for confidence-weighted circular sum
