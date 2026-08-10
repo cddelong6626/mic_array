@@ -14,12 +14,13 @@
 
 
 // Adjustable parameters
-#define MAX_LAG_SAMPLES             18
-#define FRAMES_PER_LED_UPDATE       1
+#define CONFIDENCE_THRESHOLD        0.5
+#define N_FRAMES_PER_LED_UPDATE     5
 #define SAMPLES_PER_HALF_PER_CHAN   1024
+#define MAX_LAG_SAMPLES             18
 
 // Other parameters
-#define SAMPLE_RATE                 15797
+#define SAMPLE_RATE                 53710
 #define N_CHANS                     6
 #define SAMPLES_PER_HALF            (SAMPLES_PER_HALF_PER_CHAN * 2)
 #define BUF_LEN                     (SAMPLES_PER_HALF * 2)
@@ -32,7 +33,7 @@ int16_t sai1a_rx_buf[BUF_LEN] __attribute__((section(".dma_buffer")));      // D
 int16_t sai1b_rx_buf[BUF_LEN] __attribute__((section(".dma_buffer")));
 int16_t sai4a_rx_buf[BUF_LEN] __attribute__((section(".bdma_buffer")));     // BDMA buffer: cache disabled, D3 ram
 
-// 6 channels: sai1_BlockA(0,1)  sai1_BlockB(2,3)  sai4_BlockA(4,5)
+// 6 channels: sai1_BlockA(1,2)  sai1_BlockB(3,2)  sai4_BlockA(5,4)
 float32_t audio_buf[2][N_CHANS][SAMPLES_PER_HALF_PER_CHAN];
 
 // Flags to indicate when a DMA buffer half has been filled
@@ -43,7 +44,7 @@ volatile uint8_t flag_sai1a_half1_filled = 0;
 volatile uint8_t flag_sai1b_half1_filled = 0;
 volatile uint8_t flag_sai4a_half1_filled = 0;
 
-// Flags to indicate when a buffer half is ready to be processed
+// Flags to indicate when an audio buffer half is ready to be processed
 uint8_t flag_chan01_half0_ready = 0;
 uint8_t flag_chan23_half0_ready = 0;
 uint8_t flag_chan45_half0_ready = 0;
@@ -55,17 +56,24 @@ uint8_t flag_chan45_half1_ready = 0;
 arm_rfft_fast_instance_f32 rfft_conf;
 arm_biquad_casd_df1_inst_f32 iirfilt_conf[N_CHANS];
 float32_t biquad_state[N_CHANS][4 * 2] = {0};
-const float32_t biquad_coeffs[5 * 2] = {    // 4th order DF1 SOS bandpass, 100Hz to 3000 Hz, fs=15797 Hz
+const float32_t biquad_coeffs[5 * 2] = {    // 4th order DF1 SOS bandpass, 100Hz to 3000 Hz, fs=53710 Hz
     // Stage 1
-    0.180596607689788, 0.361193215379576, 0.180596607689788, 0.482059939292023, -0.227137695705591,
+    0.0230695593792243, 0.0461391187584486, 0.0230695593792243, 1.53591407298219, -0.629300994443601,
     // Stage 2
-    1, -2, 1, 1.94387140037728, -0.945499607031652
+    1, -2, 1, 1.98352395873059, -0.98366857309285
 };
 
 float32_t fft_buf[N_CHANS][FFT_LEN];
 float32_t gccphat_buf[N_CHAN_PAIRS][FFT_LEN];
 float32_t scratch_buf[FFT_LEN];
-float32_t tdoa_estimate_sec[N_CHAN_PAIRS];
+float32_t tdoa_estimate_s[N_CHAN_PAIRS];
+
+// Least squares geometry solver (M generated with geometry_solver_matrix_generator.m)
+const float M[2][15] = {
+    {0.694444444f, 2.083333333f, 2.777777778f, 2.083333333f, 0.694444444f, 1.388888889f, 2.083333333f, 1.388888889f, 0.000000000f, 0.694444444f, 0.000000000f, -1.388888889f, -0.694444444f, -2.083333333f, -1.388888889f},
+    {-1.202813061f, -1.202813061f, -0.000000000f, 1.202813061f, 1.202813061f, -0.000000000f, 1.202813061f, 2.405626122f, 2.405626122f, 1.202813061f, 2.405626122f, 2.405626122f, 1.202813061f, 1.202813061f, 0.000000000f}
+};
+const float32_t SPEED_OF_SOUND_MPS = 343.0f;
 
 // LED update state variable
 uint32_t n_frames_since_led_update = 0;
@@ -114,42 +122,42 @@ void app_loop(void)
         if (flag_sai1a_half0_filled)
         {
             flag_sai1a_half0_filled = 0;
-            deinterleave_and_convert(audio_buf[0], &sai1a_rx_buf[0], 0, 1);
+            deinterleave_and_convert(audio_buf[0], &sai1a_rx_buf[0], 1, 0);
             flag_chan01_half0_ready = 1;
         }
 
         if (flag_sai1b_half0_filled)
         {
             flag_sai1b_half0_filled = 0;
-            deinterleave_and_convert(audio_buf[0], &sai1b_rx_buf[0], 2, 3);
+            deinterleave_and_convert(audio_buf[0], &sai1b_rx_buf[0], 3, 2);
             flag_chan23_half0_ready = 1;
         }
 
         if (flag_sai4a_half0_filled)
         {
             flag_sai4a_half0_filled = 0;
-            deinterleave_and_convert(audio_buf[0], &sai4a_rx_buf[0], 4, 5);
+            deinterleave_and_convert(audio_buf[0], &sai4a_rx_buf[0], 5, 4);
             flag_chan45_half0_ready = 1;
         }
 
         if (flag_sai1a_half1_filled)
         {
             flag_sai1a_half1_filled = 0;
-            deinterleave_and_convert(audio_buf[1], &sai1a_rx_buf[SAMPLES_PER_HALF], 0, 1);
+            deinterleave_and_convert(audio_buf[1], &sai1a_rx_buf[SAMPLES_PER_HALF], 1, 0);
             flag_chan01_half1_ready = 1;
         }
 
         if (flag_sai1b_half1_filled)
         {
             flag_sai1b_half1_filled = 0;
-            deinterleave_and_convert(audio_buf[1], &sai1b_rx_buf[SAMPLES_PER_HALF], 2, 3);
+            deinterleave_and_convert(audio_buf[1], &sai1b_rx_buf[SAMPLES_PER_HALF], 3, 2);
             flag_chan23_half1_ready = 1;
         }
 
         if (flag_sai4a_half1_filled)
         {
             flag_sai4a_half1_filled = 0;
-            deinterleave_and_convert(audio_buf[1], &sai4a_rx_buf[SAMPLES_PER_HALF], 4, 5);
+            deinterleave_and_convert(audio_buf[1], &sai4a_rx_buf[SAMPLES_PER_HALF], 5, 4);
             flag_chan45_half1_ready = 1;
         }
 
@@ -161,7 +169,6 @@ void app_loop(void)
             flag_chan45_half0_ready = 0;
 
             process_samples(audio_buf[0]);
-            n_frames_since_led_update++;
         }
         if (flag_chan01_half1_ready && flag_chan23_half1_ready && flag_chan45_half1_ready)
         {
@@ -170,32 +177,38 @@ void app_loop(void)
             flag_chan45_half1_ready = 0;
 
             process_samples(audio_buf[1]);
-            n_frames_since_led_update++;
         }
 
         // TODO
-        if (n_frames_since_led_update >= FRAMES_PER_LED_UPDATE)
+        if (n_frames_since_led_update >= N_FRAMES_PER_LED_UPDATE)
         {
-            float32_t theta;
-            arm_atan2_f32(u_sum[1], u_sum[0], &theta);
+            float32_t confidence;
+            arm_cmplx_mag_f32(u_sum, &confidence, 1);
+            confidence /= N_FRAMES_PER_LED_UPDATE;
 
-            int i_led_new = round((theta + PI) * N_LEDS/(2*PI));
+            if (confidence > CONFIDENCE_THRESHOLD)
+            {
+                float32_t theta_source;
+                float32_t theta_led;
+                float32_t dtheta;
+                int8_t brightness;
 
-//            if (i_led_cur-1 < 0) sk9822_edit_led(11, 255, 255, 255, 0);
-//            else sk9822_edit_led((i_led_cur-1) % 12, 255, 255, 255, 0);
-//            if (i_led_cur+1 > 11) sk9822_edit_led(0, 255, 255, 255, 0);
-//            else sk9822_edit_led((i_led_cur+1) % 12, 255, 255, 255, 0);
-            sk9822_edit_led((i_led_cur+0) % 12, 255, 255, 255, 0);
+                arm_atan2_f32(u_sum[1], u_sum[0], &theta_source);
+                if (theta_source < 0) theta_source += 2*PI;
+                for (int i = 0; i < N_LEDS; ++i)
+                {
+                    theta_led = i * 2*PI/N_LEDS;
+                    dtheta = fabsf(theta_led - theta_source);
 
-            i_led_cur = i_led_new;
+                    if (dtheta > PI) dtheta = 2*PI - dtheta;
+                    brightness = 31 - roundf(dtheta * 134/PI);
+                    if (brightness < 0) brightness = 0;
+                    sk9822_edit_led(i, 255, 255, 255, brightness);
+                }
 
-//            if (i_led_cur-1 < 0) sk9822_edit_led(11, 255, 255, 255, 10);
-//            else sk9822_edit_led((i_led_cur-1) % 12, 255, 255, 255, 10);
-//            if (i_led_cur+1 > 11) sk9822_edit_led(0, 255, 255, 255, 10);
-//            else sk9822_edit_led((i_led_cur+1) % 12, 255, 255, 255, 10);
-            sk9822_edit_led((i_led_cur+0) % 12, 255, 255, 255, 10);
+                sk9822_send_update();
+            }
 
-            sk9822_send_update();
 
             n_frames_since_led_update = 0;
             u_sum[0] = 0.0f;
@@ -229,7 +242,7 @@ void process_samples(float32_t input_buf[N_CHANS][SAMPLES_PER_HALF_PER_CHAN])
     // Compute the FFT of each channel
     for (uint8_t i = 0; i < N_CHANS; ++i)
     {
-        // Anti-spatial aliasing bandpass filter: 200Hz to 4000Hz passband
+        // Anti-spatial aliasing bandpass filter
         arm_biquad_cascade_df1_f32(&iirfilt_conf[i], input_buf[i], scratch_buf, FFT_LEN);
 
         /*
@@ -310,29 +323,25 @@ void process_samples(float32_t input_buf[N_CHANS][SAMPLES_PER_HALF_PER_CHAN])
             }
 
             // Convert TDOA estimate from units of samples to units of seconds
-            tdoa_estimate_sec[i_pair] = tdoa_estimate_samp_ij / (float32_t)SAMPLE_RATE;
+            tdoa_estimate_s[i_pair] = tdoa_estimate_samp_ij / (float32_t)SAMPLE_RATE;
             i_pair++;
 
         }
     }
 
-
-    // Least squares geometry solver (M generated with geometry_solver_matrix_generator.m)
-    const float M[2][15] = {
-        {0.694444444f, 2.083333333f, 2.777777778f, 2.083333333f, 0.694444444f, 1.388888889f, 2.083333333f, 1.388888889f, 0.000000000f, 0.694444444f, 0.000000000f, -1.388888889f, -0.694444444f, -2.083333333f, -1.388888889f},
-        {-1.202813061f, -1.202813061f, -0.000000000f, 1.202813061f, 1.202813061f, -0.000000000f, 1.202813061f, 2.405626122f, 2.405626122f, 1.202813061f, 2.405626122f, 2.405626122f, 1.202813061f, 1.202813061f, 0.000000000f}
-    };
-
     float32_t u[2] = {0.0f, 0.0f};
     for (int i = 0; i < 15; ++i)
     {
-        u[0] += M[0][i] * tdoa_estimate_sec[i];
-        u[1] += M[1][i] * tdoa_estimate_sec[i];
+        u[0] -= M[0][i] * tdoa_estimate_s[i] * SPEED_OF_SOUND_MPS;
+        u[1] -= M[1][i] * tdoa_estimate_s[i] * SPEED_OF_SOUND_MPS;
     }
 
     // Add vector components for confidence-weighted circular sum
     u_sum[0] += u[0];
     u_sum[1] += u[1];
+
+    n_frames_since_led_update++;
+
 }
 
 

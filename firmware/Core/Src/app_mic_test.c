@@ -42,7 +42,7 @@ int16_t sai1a_rx_buf[BUF_LEN] __attribute__((section(".dma_buffer")));      // D
 int16_t sai1b_rx_buf[BUF_LEN] __attribute__((section(".dma_buffer")));
 int16_t sai4a_rx_buf[BUF_LEN] __attribute__((section(".bdma_buffer")));     // BDMA buffer: cache disabled, D3 ram
 
-// 6 channels: sai1_BlockA(0,1)  sai1_BlockB(2,3)  sai4_BlockA(4,5)
+// 6 channels: sai1_BlockA(1,2)  sai1_BlockB(3,2)  sai4_BlockA(5,4)
 float32_t audio_buf[2][N_CHANS][SAMPLES_PER_HALF_PER_CHAN];
 
 // Flags to indicate when a DMA buffer half has been filled

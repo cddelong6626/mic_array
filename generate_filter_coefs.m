@@ -2,8 +2,8 @@
 % Filter parameters
 hp1 = 100;
 hp2 = 3000;
-% Fs = 53710;
-Fs = 15797;
+Fs = 53710;
+% Fs = 15797;
 order = 4;
 
 % Generate and visualize SOS filter
