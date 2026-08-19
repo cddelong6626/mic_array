@@ -11,7 +11,7 @@ This system captures audio synchronously across the six microphone channels at ~
 ## Hardware
 
 
-## Algorithm
+## DSP Pipeline
 
 ### GCC-PHAT-&beta;
 
