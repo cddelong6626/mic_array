@@ -39,11 +39,33 @@ The [NUCLEO-H723ZG](https://www.st.com/en/evaluation-tools/nucleo-h723zg.html) w
 
 ## DSP Pipeline
 
-### GCC-PHAT-&beta;
+### GCC-PHAT-&beta; TDOA Estimation
+This algorithm estimates the time delay of arrival (TDOA) between each pair of mics in the array to use in the geometry solver. For a 6-mic array, this amounts to $\binom{6}{2} = 15 \text{ pairs.}$ This is accomplished using FFT-accelerated cross correlations of PHAT-&beta; transformed signals.    
+
 ![Digital signal processing pipeline flowchart](images/dsp_pipeline.svg)
 
+For each audio channel: 
+1. Bandpass filter each channel with stopbands at approximately $\(100\text{ Hz}\)$ and $\(3\text{ kHz}\).$ The lower cutoff attenuates low-frequency noise, such as "room rumble" from air vents. The upper cutoff limits spatial aliasing. For a circular array with radius $\(r = 4\text{ cm}\)$, the approximate spatial aliasing frequency is $f_{\text{alias}} \approx \frac{343 \text{ m/s}}{2(0.04 \text{ m})} \approx 4.3\text{ kHz}.$ This filter is implemented as a 4th order IIR SOS filter for high performance and good numerical stability. The CMSIS-DSP coefficients for this are generated using the MATLAB script "mic_array/generate_filter_coefs.m". 
+2. FFT each channel.
 
-### Least Square Geometry Solver
+For each pair of audio channels $i$, $j$: 
+<ol start="3">
+  <li>
+    Elementwise multiply channel $i$ with the complex conjugate of channel $j$. This is equivalent to cross-correlation in the time domain. 
+  </li>
+  <li>
+    PHAT-&beta; transform the signal by dividing the product of the previous step by its own magnitude to the power of &beta;. When $\beta = 1$, this is equivalent to a PHAT transform, which completely strips the signal of its phase information. When $\beta = 0$, all denominators are 0 and the signal is uneffected, making this algorithm equivalent to GCC. GCC works well with narrowband sources and worse with wideband sources and multipath reflections. GCC-PHAT works well with wideband sources and in reverberant environments but very poorly with narrowband sources. A &beta; between 0 and 1 allows for a blend between these tradeoffs, retaining some amount of magnitude information in the signal. A &beta; between 0.5 and 0.7 is recommended. 
+  </li>
+  <li>
+    Inverse FFT the signal to convert it back to the time domain. 
+  </li>
+  <li>
+    Find the peak of the time domain signal within the bounds defined by the maximum TDOA given the microphone array geometry. It's best to use sub-sample interpolation as the TDOA resolution is otherwise low. The result of this is the TDOA estimate between channels $i$ and $j$. 
+  </li>
+</ol>
+ 
+
+### Least Squares Geometry Solver
 
 ## Embedded Implementation
 
