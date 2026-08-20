@@ -7,6 +7,7 @@ A real-time embedded direction-of-arrival (DOA) estimation system using a circul
 This system captures audio synchronously across the six microphone channels at ~48kHz, computes GCC-PHAT-&beta; cross correlations for all 15 mic pairs, and estimates the direction of arrival in real-time. 
 
 ## System Overview
+![System overview flowchart](images/system_overview.svg)
 
 ## Hardware
 
@@ -14,6 +15,8 @@ This system captures audio synchronously across the six microphone channels at ~
 ## DSP Pipeline
 
 ### GCC-PHAT-&beta;
+![Digital signal processing pipeline flowchart](images/dsp_pipeline.svg)
+
 
 ### Least Square Geometry Solver
 
@@ -21,7 +24,10 @@ This system captures audio synchronously across the six microphone channels at ~
 
 ### Processing Pipeline/Software Architecture
 
+
 ### Memory/DMA architecture
+![Embedded memory/DMA layout flowchart](images/embedded_memory_layout.svg)
+
 
 ## Performance
 Sample rate

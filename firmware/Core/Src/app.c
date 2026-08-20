@@ -14,10 +14,11 @@
 
 
 // Adjustable parameters
-#define CONFIDENCE_THRESHOLD        0.5
-#define N_FRAMES_PER_LED_UPDATE     5
+#define CONFIDENCE_THRESHOLD        0.3     // 0 to 1
+#define BETA                        0.6     // 0 to 1, recommended 0.5 to 0.7
+#define N_FRAMES_PER_LED_UPDATE     5       // Higher = more stable estimate but higher latency
 #define SAMPLES_PER_HALF_PER_CHAN   1024
-#define MAX_LAG_SAMPLES             18
+#define MAX_LAG_SAMPLES             18      // TODO: Write constraints
 
 // Other parameters
 #define SAMPLE_RATE                 53710
@@ -106,7 +107,7 @@ HAL_StatusTypeDef app_init(void)
     // Initialize the RFFT instance
     arm_rfft_fast_init_f32(&rfft_conf, FFT_LEN);
 
-    // Initialize the Biquad cascade IIR filter
+    // Initialize the Direct Form I Biquad cascade IIR filter
     for (int i = 0; i < N_CHANS; ++i)
         arm_biquad_cascade_df1_init_f32(&iirfilt_conf[i], 2, biquad_coeffs, biquad_state[i]);
 
@@ -260,7 +261,7 @@ void process_samples(float32_t input_buf[N_CHANS][SAMPLES_PER_HALF_PER_CHAN])
         for (int j = i + 1; j < N_CHANS; ++j)
         {
             // Compute the GCC-PHAT element-wise cross spectrums via multiplication and normalization of the FFT outputs
-            // The first two elements are not relevant to GCC-PHAT
+            // The first two elements are not important for GCC-PHAT-Beta
             gccphat_buf[i_pair][0] = 0;
             gccphat_buf[i_pair][1] = 0;
 
@@ -268,12 +269,13 @@ void process_samples(float32_t input_buf[N_CHANS][SAMPLES_PER_HALF_PER_CHAN])
             arm_cmplx_conj_f32(&fft_buf[j][2], &scratch_buf[2], N_CMPX_SAMPLES);
             arm_cmplx_mult_cmplx_f32(&fft_buf[i][2], &scratch_buf[2], &gccphat_buf[i_pair][2], N_CMPX_SAMPLES);
 
-            // Element-wise PHAT normalization
+            // Element-wise PHAT-Beta normalization
             arm_cmplx_mag_f32(&gccphat_buf[i_pair][2], scratch_buf, N_CMPX_SAMPLES);
-            for (int k = 0; k < N_CMPX_SAMPLES; ++k) {
+            for (int k = 0; k < N_CMPX_SAMPLES; ++k)
+            {
                 if (scratch_buf[k] > 1e-6f)
                 {
-                    scratch_buf[k] = powf(scratch_buf[k], -0.6);
+                    scratch_buf[k] = powf(scratch_buf[k], -BETA);
                 }
                 else
                 {
@@ -286,6 +288,10 @@ void process_samples(float32_t input_buf[N_CHANS][SAMPLES_PER_HALF_PER_CHAN])
             arm_rfft_fast_f32(&rfft_conf, gccphat_buf[i_pair], scratch_buf, 1);
 
             // Estimate time difference of arrival (TDOA)
+            // Only look within +/- MAX_LAG_SAMPLES for max value. First of all, it isn't physically possible for
+            // the lag to be greater than some number of samples based on the array geometry and the sample rate.
+            // Second, since this code uses PHAT-Beta rather than pure PHAT, there can be peaks outside of this
+            // range that don't correspond to the desired lag.
             float32_t tdoa_estimate_samp_ij;
             float32_t max_pos, max_neg;
             uint32_t idx_pos, idx_neg;
@@ -309,7 +315,6 @@ void process_samples(float32_t input_buf[N_CHANS][SAMPLES_PER_HALF_PER_CHAN])
             {
                 delta = 0.0f;
             }
-
             tdoa_estimate_samp_ij = (float32_t)idx_max + delta;
 
             // Account for circular iFFT output
@@ -325,10 +330,10 @@ void process_samples(float32_t input_buf[N_CHANS][SAMPLES_PER_HALF_PER_CHAN])
             // Convert TDOA estimate from units of samples to units of seconds
             tdoa_estimate_s[i_pair] = tdoa_estimate_samp_ij / (float32_t)SAMPLE_RATE;
             i_pair++;
-
         }
     }
 
+    // Least Squares Geometry Solver
     float32_t u[2] = {0.0f, 0.0f};
     for (int i = 0; i < 15; ++i)
     {
@@ -336,12 +341,11 @@ void process_samples(float32_t input_buf[N_CHANS][SAMPLES_PER_HALF_PER_CHAN])
         u[1] -= M[1][i] * tdoa_estimate_s[i] * SPEED_OF_SOUND_MPS;
     }
 
-    // Add vector components for confidence-weighted circular sum
+    // Sum vector components over multiple frames for confidence-weighted circular sum
     u_sum[0] += u[0];
     u_sum[1] += u[1];
 
     n_frames_since_led_update++;
-
 }
 
 
