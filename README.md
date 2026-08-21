@@ -45,7 +45,7 @@ This algorithm estimates the time delay of arrival (TDOA) between each pair of m
 ![Digital signal processing pipeline flowchart](images/dsp_pipeline.svg)
 
 For each audio channel: 
-1. Bandpass filter each channel with stopbands at approximately $\(100\text{ Hz}\)$ and $\(3\text{ kHz}\).$ The lower cutoff attenuates low-frequency noise, such as "room rumble" from air vents. The upper cutoff limits spatial aliasing. For a circular array with radius $\(r = 4\text{ cm}\)$, the approximate spatial aliasing frequency is $f_{\text{alias}} \approx \frac{343 \text{ m/s}}{2(0.04 \text{ m})} \approx 4.3\text{ kHz}.$ This filter is implemented as a 4th order IIR SOS filter for high performance and good numerical stability. The CMSIS-DSP coefficients for this are generated using the MATLAB script "mic_array/generate_filter_coefs.m". 
+1. Bandpass filter each channel with stopbands at approximately $\(100\text{ Hz}\)$ and $\(3\text{ kHz}\).$ The lower cutoff attenuates low-frequency noise, such as "room rumble" from air vents. The upper cutoff limits spatial aliasing. For a circular array with radius $\(r = 4\text{ cm}\)$, the approximate spatial aliasing frequency is $f_{\text{alias}} \approx \frac{343 \text{ m/s}}{2(0.04 \text{ m})} \approx 4.3\text{ kHz}.$ This filter is implemented as a 4th order IIR SOS filter for high performance and good numerical stability. The CMSIS-DSP coefficients for this are generated using the MATLAB script "generate_filter_coefs.m". 
 2. FFT each channel.
 
 For each pair of audio channels $i$, $j$: 
@@ -66,6 +66,50 @@ For each pair of audio channels $i$, $j$:
  
 
 ### Least Squares Geometry Solver
+
+Once the TDOA estimate is computed for all pairs of microphones, a least squares geometry solver is used to estimate DOA. 
+
+< Include mic array graphic here > 
+
+Trigonometry yields the following formula for the distance $d_{ij}$ and time $\tau_{ij}$ a sound wave has to travel from mic $i$ to mic $j$: 
+
+$$ d_{ij} = \lVert \vec{r}_j - \vec{r}_i \rVert \text{ } \cos(\theta) = (\vec{r}_j - \vec{r}_i)^T \hat{u} = c \tau_{ij} $$
+$$ \text{where  } c = 343 \text{ }m\text{/}s \text{, } \vec{v} = c \hat{u} $$
+
+We now solve this equation simultaneously for all mics. Construct matrix $R$ containing all spatial offsets between microphones and vector $\vec{\tau}$ containing all estimated temporal offsets (TDOAs).
+
+$$
+R =
+\begin{bmatrix}
+(\vec{r}_2 - \vec{r}_1)^T \\
+(\vec{r}_3 - \vec{r}_1)^T \\
+\vdots \\
+(\vec{r}_6 - \vec{r}_5)^T
+\end{bmatrix}
+,\qquad
+\vec{\tau} =
+\begin{bmatrix}
+\tau_{12} \\
+\tau_{13} \\
+\vdots \\
+\tau_{56}
+\end{bmatrix}
+$$
+
+Combined equation:
+
+$$ R \hat{u} = c \vec{\tau} $$
+
+This equation has 15 equations in 2 unknowns, making it highly over constrained. Solve for least squares solution:
+
+$$ R^T R \hat{u} = c R^T \vec{\tau} $$
+$$ \hat{u} = c \( R^T R \)^{-1} R^T \vec{\tau} $$
+
+The only part of the right hand side of this equation that is variable is $\tau$, allowing for pre-computation of $M = ( R^T R )^{-1} R^T$ (factor $c$ not relevant to DOA angle). This matrix is generated using the MATLAB script "geometry_solver_matrix_generator.m".   
+
+The result of this algorithm is taken as an angle:  
+
+$$\theta = \text{atan2}(\hat{u}_y, \hat{u}_x)$$
 
 ## Embedded Implementation
 
