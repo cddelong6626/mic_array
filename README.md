@@ -69,7 +69,9 @@ For each pair of audio channels $i$, $j$:
 
 Once the TDOA estimate is computed for all pairs of microphones, a least squares geometry solver is used to estimate DOA. 
 
-< Include mic array graphic here > 
+<p align="center">
+<img src="images/mic_array_diagram.svg" style="display: block; margin: 0 auto; width: 50%; text-align: center;" />
+</p>
 
 Trigonometry yields the following formula for the distance $d_{ij}$ and time $\tau_{ij}$ a sound wave has to travel from mic $i$ to mic $j$: 
 
@@ -117,8 +119,9 @@ $$\theta = \text{atan2}(\hat{u}_y, \hat{u}_x)$$
 
 
 ### Memory/DMA architecture
-![Embedded memory/DMA layout flowchart](images/embedded_memory_layout.svg)
-
+<p align="center">
+  <img src="images/embedded_memory_layout.svg" />
+</p>
 
 ## Performance
 Sample rate
