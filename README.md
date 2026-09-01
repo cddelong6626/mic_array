@@ -40,7 +40,50 @@ The [NUCLEO-H723ZG](https://www.st.com/en/evaluation-tools/nucleo-h723zg.html) w
 ## DSP Pipeline
 
 ### GCC-PHAT-&beta; TDOA Estimation
-This algorithm estimates the time delay of arrival (TDOA) between each pair of mics in the array to use in the geometry solver. For a 6-mic array, this amounts to $\binom{6}{2} = 15 \text{ pairs.}$ This is accomplished using FFT-accelerated cross correlations of PHAT-&beta; transformed signals.    
+
+GCC-PHAT is a traditional source-localization algorithm where the time delay of arrival (TDOA) is estimated using the generalized cross-correlation (GCC) between pairs of microphones weighted using a phase transform (PHAT). The phase transform has been shown to improve source localization, particularly in reverberant environments. However, applying PHAT significantly degrades performance in narrowband environments, where GCC by itself performes fairly well. 
+
+$$
+G_{ij}(f) = X_i(f)X_j^*(f)
+$$
+
+$$
+R_{ij}(\tau) =
+\mathcal{F}^{-1}
+\left(
+\frac{G_{ij}(f)}
+{|G_{ij}(f)|}
+\right)
+$$
+
+$$
+\hat{\tau}_{ij} =
+\underset{\tau}{\arg\max}
+R_{ij}(\tau)
+$$
+
+The paper ["Performance of phase transform for detecting sound sources with microphone arrays in reverberant and noisy environments"](https://doi.org/10.1016/j.sigpro.2007.01.013) strikes a bargain between GCC and GCC-PHAT by interpolating between the cross-power spectrum weightings using a coefficient &beta;. When &beta; is zero, GCC-PHAT-&beta; is equivalent to GCC, while when &beta; is one, GCC-PHAT-&beta; is equivalent to GCC-PHAT. Intermediate values perform fairly well in both broad and narrowband cases, giving more versatile performance. 
+
+$$
+G_{ij}(f) = X_i(f)X_j^*(f)
+$$
+
+$$
+R_{ij}^{(\beta)}(\tau) =
+\mathcal{F}^{-1}
+\left(
+\frac{G_{ij}(f)}
+{|G_{ij}(f)|^\beta}
+\right)
+$$
+
+$$
+\hat{\tau}_{ij} =
+\underset{\tau}{\arg\max}
+R_{ij}^{(\beta)}(\tau)
+$$
+
+This algorithm is computed using FFT-accelerated GCC and the PHAT-&beta; transform in the frequency domain, which produces peaks in the time domain with delays that correspond to the TDOA between the considered pair of mics. This is done for every pair of mics, which corresponds to $\binom{6}{2} = 15 \text{ pairs}$ for this 6-mic array. 
 
 ![Digital signal processing pipeline flowchart](images/dsp_pipeline.svg)
 
@@ -147,8 +190,6 @@ FLASH usage
 Talk about the 6 sample shift tests
 Talk about extracting STM32 memory, importing into MATLAB, and testing the algorithm on it
 
-## Results
-If I can figure out how to have a speaker at a very specific angle I can do true angle vs estimated angle to find error in degrees. Might not though lowkey
 
 ## Future Work
 - Better fractional interpolation if necessary
