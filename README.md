@@ -115,13 +115,22 @@ $$\theta = \text{atan2}(\hat{u}_y, \hat{u}_x)$$
 
 ## Embedded Implementation
 
-### Processing Pipeline/Software Architecture
+### Software Architecture
+
+The pipeline is in a standard double-buffering format. When one half of the DMA buffers are being filled, the other half is processed. This ensures that all samples are processed in real-time while the buffer is continuously being filled.  
+
+To accomplish this, interrupt callbacks are enabled for when each of the 3 SAI/I2S interface DMA buffers are full/half full. The main loop waits until all three interfaces have one half of their buffer full. Once they do, the processing for that half of the buffers is started. 
 
 
 ### Memory/DMA architecture
+
+The memory was carefully configured in order to both get the performance boost from the STM32H7's caching and use DMA without any valid bit issues. Without explicit cache invalidation, DMA buffers are not compatible with the H7's caching. The DMA does not invalidate the memory in the cache that it writes to, meaning the cached value does not automatically change. 
+
 <p align="center">
   <img src="images/embedded_memory_layout.svg" />
 </p>
+
+To circumvent this issue, DMA and BDMA memory sections were explicity defined in D2 and D3 ram respectively in the linker script. Caching was then disabled in these regions and enabled in all other regions. When the non-DMA buffers are defined normally, they are put in cached D1 ram and therefore enjoy that performance boost.  
 
 ## Performance
 Sample rate
