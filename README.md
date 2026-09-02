@@ -4,7 +4,10 @@ A real-time embedded direction-of-arrival (DOA) estimation system using a circul
 
 ## Demo
 
-< Include video/gif >  
+<p align="center">
+<img src="images/gcc-phat-beta_demo.gif" style="display: block; margin: 0 auto; width: 40%; text-align: center;" />
+</p>
+
 The system synchronously captures audio from six microphone channels at approximately 48 kHz, computes GCC-PHAT-&beta; cross-correlations for all 15 microphone pairs, and estimates the direction of arrival in real time.
 
 ## System Overview
@@ -185,7 +188,7 @@ The matrix $M$ is generated using the MATLAB script `geometry_solver_matrix_gene
 Finally, the estimated direction is converted to an angle using
 
 $$
-\theta=\operatorname{atan2}(\hat{u}_y,\hat{u}_x).
+\theta=\mathrm{atan2}(\hat{u}_y,\hat{u}_x)
 $$
 
 ## Embedded Implementation
