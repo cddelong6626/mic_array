@@ -14,11 +14,11 @@
 
 
 // Adjustable parameters
-#define CONFIDENCE_THRESHOLD        0.3     // 0 to 1
+#define CONFIDENCE_THRESHOLD        0.1     // 0 to 1
 #define BETA                        0.6     // 0 to 1, recommended 0.5 to 0.7
-#define N_FRAMES_PER_LED_UPDATE     5       // Higher = more stable estimate but higher latency
+#define HISTORY_SIZE                5       // Higher = more stable estimate but higher latency
 #define SAMPLES_PER_HALF_PER_CHAN   1024
-#define MAX_LAG_SAMPLES             18      // TODO: Write constraints
+#define MAX_LAG_SAMPLES             18
 
 // Other parameters
 #define SAMPLE_RATE                 53710
@@ -78,6 +78,9 @@ const float32_t SPEED_OF_SOUND_MPS = 343.0f;
 
 // LED update state variable
 uint32_t n_frames_since_led_update = 0;
+float32_t u_history[HISTORY_SIZE][2];
+uint8_t i_ring = 0;
+
 float32_t u_sum[2] = {0.0f};
 uint8_t i_led_cur = 0;
 
@@ -178,42 +181,6 @@ void app_loop(void)
             flag_chan45_half1_ready = 0;
 
             process_samples(audio_buf[1]);
-        }
-
-        // TODO
-        if (n_frames_since_led_update >= N_FRAMES_PER_LED_UPDATE)
-        {
-            float32_t confidence;
-            arm_cmplx_mag_f32(u_sum, &confidence, 1);
-            confidence /= N_FRAMES_PER_LED_UPDATE;
-
-            if (confidence > CONFIDENCE_THRESHOLD)
-            {
-                float32_t theta_source;
-                float32_t theta_led;
-                float32_t dtheta;
-                int8_t brightness;
-
-                arm_atan2_f32(u_sum[1], u_sum[0], &theta_source);
-                if (theta_source < 0) theta_source += 2*PI;
-                for (int i = 0; i < N_LEDS; ++i)
-                {
-                    theta_led = i * 2*PI/N_LEDS;
-                    dtheta = fabsf(theta_led - theta_source);
-
-                    if (dtheta > PI) dtheta = 2*PI - dtheta;
-                    brightness = 31 - roundf(dtheta * 134/PI);
-                    if (brightness < 0) brightness = 0;
-                    sk9822_edit_led(i, 255, 255, 255, brightness);
-                }
-
-                sk9822_send_update();
-            }
-
-
-            n_frames_since_led_update = 0;
-            u_sum[0] = 0.0f;
-            u_sum[1] = 0.0f;
         }
     }
 }
@@ -341,11 +308,49 @@ void process_samples(float32_t input_buf[N_CHANS][SAMPLES_PER_HALF_PER_CHAN])
         u[1] -= M[1][i] * tdoa_estimate_s[i] * SPEED_OF_SOUND_MPS;
     }
 
-    // Sum vector components over multiple frames for confidence-weighted circular sum
-    u_sum[0] += u[0];
-    u_sum[1] += u[1];
+    // Store new u value
+    u_history[i_ring][0] = u[0];
+    u_history[i_ring][1] = u[1];
+    ++i_ring;
+    if (i_ring >= HISTORY_SIZE) i_ring = 0;
 
-    n_frames_since_led_update++;
+
+    // Update LEDs when confidence is high
+    u_sum[0] = 0.0f;
+    u_sum[1] = 0.0f;
+    for (int i = 0; i < HISTORY_SIZE; ++i)
+    {
+        u_sum[0] += u_history[i][0];
+        u_sum[1] += u_history[i][1];
+    }
+
+    float32_t confidence;
+    arm_cmplx_mag_f32(u_sum, &confidence, 1);
+    confidence /= HISTORY_SIZE;
+
+    if (confidence > CONFIDENCE_THRESHOLD)
+    {
+        float32_t theta_source;
+        float32_t theta_led;
+        float32_t dtheta;
+        int8_t brightness;
+
+        arm_atan2_f32(u_sum[1], u_sum[0], &theta_source);
+        if (theta_source < 0) theta_source += 2*PI;
+        for (int i = 0; i < N_LEDS; ++i)
+        {
+            theta_led = i * 2*PI/N_LEDS;
+            dtheta = fabsf(theta_led - theta_source);
+
+            if (dtheta > PI) dtheta = 2*PI - dtheta;
+            brightness = 31 - roundf(dtheta * 134/PI);
+            if (brightness < 0) brightness = 0;
+            sk9822_edit_led(i, 255, 255, 255, brightness);
+        }
+
+        sk9822_send_update();
+    }
+
 }
 
 

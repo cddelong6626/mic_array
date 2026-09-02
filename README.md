@@ -209,33 +209,18 @@ The memory architecture is designed to allow DMA buffers to be accessed reliably
 
 To avoid this issue, the linker script places DMA and BDMA buffers in dedicated D2 and D3 RAM sections, respectively. Caching is disabled for these regions, while non-DMA buffers are placed in cached D1 RAM. This allows the audio buffers to remain coherent with DMA while DSP working buffers benefit from data-cache acceleration.
 
-## Performance
-
-Sample rate  
-Block size  
-Channels  
-Pairwise correlations  
-Latency  
-Block duration  
-CPU utilization  
-RAM usage  
-FLASH usage
-
 ## Validation
 
-Talk about the 6 sample shift tests  
-Talk about extracting STM32 memory, importing into MATLAB, and testing the algorithm on it
+The DSP pipeline was first validated using synthetic signals with a known six-sample delay between microphone channels. The embedded implementation correctly identified the imposed delay, validating the GCC-PHAT-β TDOA estimation independently of the physical microphone array.  
+
+The algorithm was further validated using audio data captured directly from the STM32. The recorded memory contents were extracted and imported into MATLAB, where the same DSP pipeline was applied offline. Comparing the embedded and offline results provided a way to verify the embedded implementation against a higher-level reference implementation.  
 
 ## Future Work
 
-- Better fractional interpolation if necessary
-- Test zeroing out unnecessary parts of spectrum with framing
-- Try higher clock speed
-- Dynamic &beta;
-- Add real-time beamforming (need to figure out good way to get signal off of board onto computer or speaker)
-- Mechanical enclosure
-- Kalman/particle filter result rather than simple circular mean
-
-## Repository Structure
-
-## References
+- Improve fractional-delay interpolation to increase TDOA resolution.
+- Investigate frequency-domain filtering to remove unnecessary spectral components before GCC-PHAT-β processing.
+- Increase the MCU clock frequency to reduce processing latency and CPU utilization.
+- Implement dynamic β selection based on signal characteristics.
+- Add real-time beamforming and audio output.
+- Design a mechanical enclosure for the microphone array and electronics.
+- Replace the current circular-mean DOA smoothing with a Kalman or particle filter for improved temporal stability.
